@@ -8,8 +8,8 @@ Talent Scout: recruiter-side AI screening. Applicant applies → gets a session 
 1. `docs/PRD.md` — flows & requirements
 2. `docs/API.md` — **REST contract** (identical to the server)
 3. `docs/EVENTS.md` — **SSE contract** (identical to the server)
-4. `PLAN.md` — 7-day checklist
-5. `docs/LESSONS.md` — lessons from previous issues (read before starting a new issue)
+4. `PLAN.md` — scope summary; the order of work comes from the graph, not this file
+5. `docs/LESSONS.md` — lessons from previous issues (read before starting a new node)
 6. `docs/SERVER-SIDE.md` — server-side SvelteKit (BFF) design & auth/SSE/IP flow (approved 2026-11-05; the contract docs win on any conflict)
 7. The GitHub issue being worked on (`gh issue view <n>`) — the source of the task
 
@@ -28,6 +28,7 @@ talent-scout-client/
 │   │   ├── server/                 # server-only ($lib/server can't be imported by browser code)
 │   │   │   ├── session.ts          # ts_session cookie: name/options, set/clear/read
 │   │   │   ├── guards.ts           # requireRecruiter(event), normalizeRefererPath
+│   │   │   ├── redact.ts           # strips credentials from log text
 │   │   │   ├── client-ip.ts        # X-Forwarded-For + X-BFF-Secret headers for Go API calls
 │   │   │   └── api/
 │   │   │       ├── openapi.yaml    # copy from the server
@@ -73,7 +74,7 @@ talent-scout-client/
 | `/dashboard/login` | Single password → form action → `access_token` stored only in the httpOnly `ts_session` cookie (never sent to the browser); 401 anywhere → clear the cookie, go to login | `POST /auth/login` |
 | `/dashboard/jobs` | Job table (MVP: 1 seeded job, no create/edit button), applicant count, copy `apply_url` (`https://talentscout.vercel.app/apply/{jobId}` from the server) | `GET /jobs` |
 | `/dashboard/jobs/[jobId]` | Applicant table: name, status badge, overall score, status filter | `GET /jobs/{jobId}/applications` |
-| `/dashboard/applications/[applicationId]` | Left: transcript (quoted applicant messages highlighted). Right: ScoreCard per criterion (score, rationale, evidence quote → click scrolls to the message, `needs_manual` badge), cost, Shortlist/Reject buttons + note, **Get invite link** (only for status `invited`; show & copy `invite_url`), CV link, link to the graph | `GET /applications/{applicationId}`, `POST .../decision`, `POST .../resend-invite`, `GET .../cv` |
+| `/dashboard/applications/[applicationId]` | Left: transcript (quoted applicant messages highlighted). Right: ScoreCard per criterion (score, rationale, evidence quote → click scrolls to the message, `needs_manual` badge), cost, Shortlist/Reject buttons + note, **Get invite link** (for `invited` sessions and `failed` applications; show & copy `invite_url`), CV link, link to the graph | `GET /applications/{applicationId}`, `POST .../decision`, `POST .../resend-invite`, `GET .../cv` |
 | `/dashboard/runs/[runId]` | GraphView: nodes `planner, plan_check, interviewer, judge, guard, scorer, evidence_check, recruiter_gate`; color per status (pending/running/succeeded/failed), edges animate on `edge.traversed`, `attempt` badge on `loop.retry`, event timeline panel + node detail (model, tokens, duration, cost). Live & replay modes. | `GET /graph-runs/{runId}`, `POST /auth/sse-token` (server-side), SSE `/graph-runs/{runId}/events?sse_token=&since_seq=` (browser → Go) |
 
 ## Mock-First
@@ -112,27 +113,18 @@ talent-scout-client/
 - [ ] All acceptance criteria in the issue checked
 - [ ] New lessons (if any) added to `docs/LESSONS.md`
 
-## Tasks (7 days)
-Tasks are **no longer** listed here. Source of tasks = GitHub issues in this repo labeled `agent:claude` (dependencies via "Blocked by #N", day via the `day:N` label). A per-day summary is in `PLAN.md`.
+## How work runs (mandatory)
+Work is scheduled by the control plane in `aangwijaya/talent-scout` (`WORKFLOW.md`, `ops/`), not by picking issues by hand. You receive one node: a GitHub issue with a `fence`, `blocked_by`, and `checks` block. `ops/brief client#<n>` prints the exact context, including the previous session's handoff.
 
-## Agentic Workflow (mandatory)
-Project skills live in `.claude/skills/`: `issue-workflow`, `new-page-with-mock`, `use-design-tokens`. Review & CI skills (adapted from cursor/plugins, MIT, see `LICENSE-THIRD-PARTY.md` there): `verify-this`, `deslop`, `thermo-nuclear-review`, `thermo-nuclear-code-quality-review`, `loop-on-ci`, `fix-ci`, `get-pr-comments` (order in the work loop below). Design skill: `impeccable` (pbakaus/impeccable v4.8.0, Apache-2.0, see its folder's `LICENSE`/`NOTICE.md`), restricted below.
+**Order:** SCOPE (confirm dependencies exist) → RED (write checks, watch them fail) → GREEN → HANDOFF. Stay inside the fence. When docs and the installed framework disagree, the installed code and types win.
 
-**Labels:** `agent:claude` (your tasks) · `agent:opencode` (server) · `agent:human` (repo owner) · `status:todo` → `status:in-progress` → `status:review` · `status:blocked` · `contract-change` · `skill-update` · `type:feat|bug|chore` · `day:1`…`day:7`.
+**Findings:** fix it here if it is inside the fence and blocking. Outside the fence and blocking: create a `type:gap` issue with a node block, set `STATUS: gap`, and stop. Not blocking: comment the exact fix on the issue that owns it, or create a `type:gap` issue if none does. Needs a decision: `STATUS: needs_human`. Nothing goes in a PR body as "not fixed".
 
-**Work loop (repeat until no issues remain):**
-1. Pick a `status:todo` + `agent:claude` issue with the lowest `day:N` whose "Blocked by" issues are all **closed** (`gh issue list --label agent:claude --label status:todo --state open`, then `gh issue view <n>`). Cross-repo blockers (`aangwijaya/talent-scout-server#N`) are checked with `gh issue view N -R aangwijaya/talent-scout-server`.
-2. Switch the label to `status:in-progress` (`gh issue edit <n> --remove-label status:todo --add-label status:in-progress`).
-3. Work **only in a git worktree** (see `WORKFLOW.md` §11): check that `git rev-parse --git-dir` contains `/worktrees/`. If not → stop and ask a human to run `git worktree add ../wt/client-<n> -b feat/<n>-<slug> origin/main`. Don't create branches in the main checkout. 1 issue = 1 worktree = 1 branch = 1 PR. If the worktree has no branch yet, create it from `origin/main`: `feat/<n>-<slug>` (`fix/…` for bugs, `chore/…` for chores; `.env` copied manually, `pnpm install` per worktree).
-4. Implement only the acceptance criteria. Claiming a fix (type:bug, "fixes X") → run `verify-this` and put the verdict in the PR body.
-5. Run `deslop` on the branch diff, then the green checks: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm test:e2e` (once the smoke test exists).
-6. **UI PRs only:** run `impeccable audit <route>` (report-only), then `impeccable polish <route>` on the PR's own page (existing `DESIGN.md` tokens only); re-run the green checks.
-7. Run `thermo-nuclear-review` + `thermo-nuclear-code-quality-review` — **report-only, once per PR** (no review→edit loop; token cost). Fix only High findings / presumptive blockers and re-run the green checks; list the rest in the PR body under "Review findings (not fixed)".
-8. Failing (checks or blocker fixes) → **max 3 attempts** in total. Still failing → label `status:blocked`, comment on the issue (what was tried, the last error, the suspected cause), move to the next issue.
-9. Green → push, `gh pr create` with the template and a `Closes #<n>` line; switch the issue label to `status:review`.
-10. `loop-on-ci` (+ `fix-ci`) until all PR checks are green — active once CI exists (client #1); same max-3 rule.
-11. Human review → `get-pr-comments` → fix → green checks → push (no force) → back to step 10. The human merges.
-12. Add an entry to `docs/LESSONS.md` if there was a lesson (recurring review/CI findings included), then go back to step 1.
+**Walls:** the runner pushes, opens PRs, and merges; these commands are denied to you. Don't edit contract documents without an approved `contract-change` issue. Don't use production credentials.
+
+**Skills:** `new-page-with-mock` and `use-design-tokens` when building pages, `verify-this` when claiming a fix, `deslop` before committing. On UI nodes, also `impeccable audit` and `polish` (rules below). The `thermo-nuclear-*` reviews run in a separate session, not by the author.
+
+**Learning:** add an entry to `docs/LESSONS.md` when there is a real lesson. Repeats become `skill-update` nodes through `ops/triage`. Prefer a test, lint rule, or CI check over text.
 
 ## Impeccable (design skill)
 `.claude/skills/impeccable/` (pinned v4.8.0, manual copy, no hook, no subagents). Project config: `.impeccable/config.json` (telemetry off; detector ignores `overused-font` = Inter).
@@ -141,7 +133,3 @@ Project skills live in `.claude/skills/`: `issue-workflow`, `new-page-with-mock`
 - **Never run:** `document`, `extract`, `init`, redesign, `shape`, `bolder`, `colorize`, `delight`, `overdrive`, `animate`, `typeset`, `live`, `generate`.
 - No dark mode. No new fonts. Don't install the impeccable hook, don't run `npx impeccable install`, don't edit `DESIGN.md` through impeccable.
 - If the launcher (`scripts/impeccable context`) is unavailable or would download its binary, skip it and read `DESIGN.md` directly.
-
-**Limits:** never merge a PR, never force-push, never push to `main`; don't edit contract documents without an approved `contract-change` issue; don't close issues yourself; don't create new feature issues (`type:bug`/`contract-change` are allowed). Restart the Claude session every 2–4 issues (start again with `CLAUDE.md` + `docs/LESSONS.md`). All GitHub operations go through the `gh` CLI.
-
-**Learning loop:** the same lesson appearing 2× in `docs/LESSONS.md` → a separate PR labeled `skill-update` that updates `.claude/skills/` or the rules in this file. Prefer turning lessons into tests/lint/CI checks. A human merges.

@@ -21,14 +21,11 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-  contract-sync:
-    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'contract-change')
+  contract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Compare contract docs with the server repo
-        run: |
-          for f in API.md EVENTS.md PRD.md; do
-            curl -fsSL "https://raw.githubusercontent.com/aangwijaya/talent-scout-server/main/docs/$f" -o "/tmp/$f"
-            cmp "docs/$f" "/tmp/$f" || { echo "::error file=docs/$f::differs from talent-scout-server main"; exit 1; }
-          done
+      - name: Compare contract files with the pinned server commit
+        run: python3 scripts/check-contract.py
+      - name: Reject removed SvelteKit APIs in docs
+        run: "! git grep -nE '\\$env/(dynamic|static)' -- '*.md' ':!docs/LESSONS.md'"
