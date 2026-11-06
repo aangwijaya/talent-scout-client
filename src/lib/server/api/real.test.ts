@@ -96,7 +96,7 @@ describe('realApi', () => {
 		expect(isRedirect(error)).toBe(true);
 		expect(error).toMatchObject({
 			status: 303,
-			location: '/dashboard/login?redirectTo=%2Fdashboard%2Fjobs'
+			location: '/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%3Fstatus%3Dreview'
 		});
 	});
 
