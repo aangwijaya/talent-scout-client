@@ -1,0 +1,348 @@
+[
+	{
+		"event": "run.started",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 1,
+		"ts": "2026-11-04T06:30:02Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"session_id": "6f1c2a54-8d3e-4b7a-9c21-0a5e7d3b1f10",
+			"nodes": [
+				{
+					"id": "planner",
+					"type": "splitter"
+				},
+				{
+					"id": "plan_check",
+					"type": "code"
+				},
+				{
+					"id": "interviewer",
+					"type": "worker"
+				},
+				{
+					"id": "judge",
+					"type": "gate"
+				},
+				{
+					"id": "guard",
+					"type": "code"
+				},
+				{
+					"id": "scorer",
+					"type": "worker"
+				},
+				{
+					"id": "evidence_check",
+					"type": "code"
+				},
+				{
+					"id": "recruiter_gate",
+					"type": "human_gate"
+				}
+			],
+			"edges": [
+				{
+					"from": "planner",
+					"to": "plan_check"
+				},
+				{
+					"from": "plan_check",
+					"to": "planner"
+				},
+				{
+					"from": "plan_check",
+					"to": "interviewer"
+				},
+				{
+					"from": "interviewer",
+					"to": "judge"
+				},
+				{
+					"from": "judge",
+					"to": "guard"
+				},
+				{
+					"from": "guard",
+					"to": "interviewer"
+				},
+				{
+					"from": "guard",
+					"to": "scorer"
+				},
+				{
+					"from": "scorer",
+					"to": "evidence_check"
+				},
+				{
+					"from": "evidence_check",
+					"to": "scorer"
+				},
+				{
+					"from": "evidence_check",
+					"to": "recruiter_gate"
+				}
+			]
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 2,
+		"ts": "2026-11-04T06:30:04Z",
+		"node_id": "planner",
+		"attempt": 1,
+		"data": {
+			"model": "deepseek/deepseek-v4.1-flash",
+			"input_summary": "job description, rubric and CV"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 3,
+		"ts": "2026-11-04T06:30:06Z",
+		"node_id": "planner",
+		"attempt": 1,
+		"data": {
+			"output_summary": "topics=7",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 4,
+		"ts": "2026-11-04T06:30:08Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "planner",
+			"to": "plan_check",
+			"label": "planned"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 5,
+		"ts": "2026-11-04T06:30:10Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"model": null,
+			"input_summary": "planner output"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 6,
+		"ts": "2026-11-04T06:30:12Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"output_summary": "invalid",
+			"tokens_in": 0,
+			"tokens_out": 0,
+			"duration_ms": 12,
+			"cost_usd": 0
+		}
+	},
+	{
+		"event": "check.failed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 7,
+		"ts": "2026-11-04T06:30:14Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"check": "plan_shape",
+			"errors": [
+				{
+					"reason": "too_many_topics"
+				}
+			]
+		}
+	},
+	{
+		"event": "loop.retry",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 8,
+		"ts": "2026-11-04T06:30:16Z",
+		"node_id": "planner",
+		"attempt": 2,
+		"data": {
+			"attempt": 2,
+			"max_attempts": 2,
+			"reason": "too_many_topics",
+			"feedback": "Plan 3 to 5 topics."
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 9,
+		"ts": "2026-11-04T06:30:18Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "plan_check",
+			"to": "planner",
+			"label": "invalid"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 10,
+		"ts": "2026-11-04T06:30:20Z",
+		"node_id": "planner",
+		"attempt": 2,
+		"data": {
+			"model": "deepseek/deepseek-v4.1-flash",
+			"input_summary": "job description, rubric and CV"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 11,
+		"ts": "2026-11-04T06:30:22Z",
+		"node_id": "planner",
+		"attempt": 2,
+		"data": {
+			"output_summary": "topics=7",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 12,
+		"ts": "2026-11-04T06:30:24Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "planner",
+			"to": "plan_check",
+			"label": "planned"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 13,
+		"ts": "2026-11-04T06:30:26Z",
+		"node_id": "plan_check",
+		"attempt": 2,
+		"data": {
+			"model": null,
+			"input_summary": "planner output"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 14,
+		"ts": "2026-11-04T06:30:28Z",
+		"node_id": "plan_check",
+		"attempt": 2,
+		"data": {
+			"output_summary": "invalid",
+			"tokens_in": 0,
+			"tokens_out": 0,
+			"duration_ms": 12,
+			"cost_usd": 0
+		}
+	},
+	{
+		"event": "check.failed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 15,
+		"ts": "2026-11-04T06:30:30Z",
+		"node_id": "plan_check",
+		"attempt": 2,
+		"data": {
+			"check": "plan_shape",
+			"errors": [
+				{
+					"reason": "too_many_topics"
+				}
+			]
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 16,
+		"ts": "2026-11-04T06:30:32Z",
+		"node_id": "interviewer",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 17,
+		"ts": "2026-11-04T06:30:34Z",
+		"node_id": "judge",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 18,
+		"ts": "2026-11-04T06:30:36Z",
+		"node_id": "guard",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 19,
+		"ts": "2026-11-04T06:30:38Z",
+		"node_id": "scorer",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 20,
+		"ts": "2026-11-04T06:30:40Z",
+		"node_id": "evidence_check",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "run.failed",
+		"run_id": "4a8c2e6f-1b3d-4f5a-9e70-5c7a9b1d3f40",
+		"seq": 21,
+		"ts": "2026-11-04T06:30:42Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"error": "planner_invalid_after_retries"
+		}
+	}
+]
