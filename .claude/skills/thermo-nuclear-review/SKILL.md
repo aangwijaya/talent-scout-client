@@ -60,7 +60,7 @@ NEVER misreport the priority / importance of issues. Be extremely thorough in tr
 
 ## Talent Scout security & correctness checklist (client)
 Check every item the diff touches; report only issues in added/modified code.
-- **No secrets in the bundle:** no `PUBLIC_*` env vars at all; `API_BASE_URL`, `USE_MOCK`, `BFF_SHARED_SECRET` only via `$env/dynamic/private` in `$lib/server` / `*.server.ts`. Anything that looks like a key, password, or service-role token in `src/`, fixtures, or `.env.example` values is High.
+- **No secrets in the bundle:** no `PUBLIC_*` env vars at all; `API_BASE_URL`, `USE_MOCK`, `BFF_SHARED_SECRET` only via `$app/env/private` (declared in `src/env.ts`) in `$lib/server` / `*.server.ts`. Anything that looks like a key, password, or service-role token in `src/`, fixtures, or `.env.example` values is High.
 - **Token handling:** recruiter `access_token` lives only in the httpOnly `ts_session` cookie; added as `Authorization: Bearer` by `handleFetch` only for `API_BASE_URL`; never returned from `load`/actions, never in `localStorage`/`sessionStorage`, URLs, logs, or error messages. The browser only ever sees the 60 s run-scoped `sse_token` (in the SSE URL). 401 → clear cookie and go to login. `BFF_SHARED_SECRET` is only sent server-side on the apply call.
 - **XSS from AI / CV output:** transcript text, AI messages, evidence quotes, CV content, and job text render as text (`{value}`), never via `{@html}` or `innerHTML`. Any `{@html}` needs a sanitizer and a stated reason. URLs from data are not put into `href` without a scheme check.
 - **SSE:** `EventSource` closed on unmount/navigation; reconnect uses `since_seq`; unknown event types handled by the exhaustive switch.

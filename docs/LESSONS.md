@@ -23,12 +23,20 @@ Rules:
 
 ## Entries
 
+### 2026-11-07 — #24 Rules that only exist as text don't run
+- **Context:** the "docs written for SvelteKit 2" lesson was logged three times, and the required `skill-update` PR was never opened
+- **Problem:** the learning rule depended on an agent remembering it, across sessions that remember nothing
+- **Cause:** nothing computed the repeat count or scheduled the follow-up
+- **Lesson:** enforce a repeated rule with a check, and let `ops/triage` schedule the work
+- **Follow-up:** CI check in PR #28
+- **Repeated?:** first time
+
 ### 2026-11-07 — #13 Kit 3 `handleError` also receives `error()` throws
 - **Context:** returning the generic message that `docs/SERVER-SIDE.md` and the issue ask for
 - **Problem:** always returning it would have replaced every friendly `error(404, …)`/`error(410, …)` message, and the hook types had moved, so `Handle` no longer imports from `@sveltejs/kit`
 - **Cause:** Kit 3 calls the hook for app and framework errors as well, with `{ kind, error, event }` instead of `{ error, event, status, message }`; hook types now live in `@sveltejs/kit/hooks`
 - **Lesson:** in `handleError`, return early unless `kind === 'unknown'`; read a framework hook's types in the installed version before following docs written against the previous major
-- **Follow-up:** none
+- **Follow-up:** CI check in PR #28
 - **Repeated?:** same root cause as 2026-11-06 #1 and #3 (docs written against SvelteKit 2)
 
 ### 2026-11-07 — #13 Auth checks that look right but are not enough in Kit
@@ -52,7 +60,7 @@ Rules:
 - **Problem:** `svelte-check` reports "Cannot find module `$env/dynamic/private`", while `CLAUDE.md`, `docs/SERVER-SIDE.md` and the issues all name it
 - **Cause:** Kit 3 deprecated `$env/*`; variables are declared with `defineEnvVars` in `src/env.ts` and imported by name from `$app/env/private`
 - **Lesson:** add a new env var to `src/env.ts` first, then `import { NAME } from '$app/env/private'`; check issue text that names framework modules against the installed major
-- **Follow-up:** pending `skill-update` PR (the `thermo-nuclear-review` checklist still names `$env/dynamic/private`)
+- **Follow-up:** CI check and skill fix in PR #28
 - **Repeated?:** same root cause as 2026-11-06 #1 (docs written against SvelteKit 2)
 
 ### 2026-11-06 — #2 A server contract change turns every client PR red

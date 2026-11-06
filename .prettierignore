@@ -14,3 +14,7 @@ bun.lockb
 /.claude/
 /.opencode/
 /.impeccable/
+
+# Pinned contract, byte-identical to the server
+/contract.lock
+/src/lib/server/api/openapi.yaml

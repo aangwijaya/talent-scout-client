@@ -1,6 +1,6 @@
 # PLAN — Frontend (talent-scout-client), 7 Days
 
-Built by Claude. References: `CLAUDE.md`, `DESIGN.md`, `docs/*`, `WORKFLOW.md` (a copy of the rules is in `CLAUDE.md`). Each block below = one or more GitHub issues labeled `agent:claude` + `day:N`; work through issues. Tick when the DoD is met.
+Built by Claude. References: `CLAUDE.md`, `DESIGN.md`, `docs/*`; rules are in `CLAUDE.md`, and the order of work comes from `ops/next` in `aangwijaya/talent-scout`. Each block below = one or more GitHub issues labeled `agent:claude` + `day:N`; work through issues. Tick when the DoD is met.
 
 1-week scope: no create/edit job page (1 seeded job), invite links copied from the dashboard ("Get invite link"), 1 recruiter password, **1 Playwright smoke test**.
 
