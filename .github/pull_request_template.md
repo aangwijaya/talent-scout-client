@@ -4,7 +4,7 @@
 Closes #
 
 ## Checklist
-- [ ] Local green checks pass: `pnpm check`, `pnpm lint`, `pnpm build`, `pnpm test:e2e` (once it exists)
+- [ ] Local green checks pass: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm test:e2e` (once it exists)
 - [ ] All issue acceptance criteria met
 - [ ] Follows the contract (`docs/API.md`, `docs/EVENTS.md`); no new fields/endpoints/events
 - [ ] No secrets / credentials / `.env` in the diff

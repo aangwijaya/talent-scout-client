@@ -35,6 +35,7 @@ Green checks (all must pass):
 ```bash
 pnpm check
 pnpm lint
+pnpm test
 pnpm build
 pnpm test:e2e      # once the smoke test exists
 ```
