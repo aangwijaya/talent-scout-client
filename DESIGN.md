@@ -12,7 +12,7 @@
   - `relate-preview-video-poster.jpg`, `relate-detail-video-poster.jpg`: preview video posters
   - `relate-DESIGN.source.md`: the original DESIGN.md from Refero (the "Download DESIGN.md" button), unmodified
   - `relate-tokens.source.css`: the original CSS variables + Tailwind v4 `@theme` block from Refero, unmodified
-  - The preview videos (`relate-preview.mp4`, `relate-detail.mp4`, ±5 MB) are **not** committed. Their location on the box: `/workspace/talent-scout/design-refs/relate-videos/`
+  - The preview videos (`relate-preview.mp4`, `relate-detail.mp4`, ±5 MB) are **not** committed. They are kept in the master folder: `talent-scout/design-refs/relate-videos/`
 
 **Why Relate:**
 1. **It's product UI, not a marketing page.** CRM pipeline/deal cards, compact density (8–12px gaps, 12px card padding), and hairline borders fit dense applicant tables and session reviews. A CRM pipeline also resembles a recruiting pipeline.
@@ -23,7 +23,7 @@
 - **Seline Analytics:** calm and editorial, but its rules forbid any accent color beyond the single accent. That clashes directly with the node status colors (green/red/orange). Its main font (Roobert) is paid.
 - **Column:** feels institutional and trustworthy, but it's a fintech-landing language with many decorative colors. Its font (SuisseIntl) is paid and too heavy for a dashboard built in 1 week.
 - **Calendly:** runner-up for the applicant pages because of its calm feel. But its font (Gilroy) is paid, the headings are oversized marketing style, it has decorative blobs, and there's no status palette.
-- Previews of all three are on the box, not in the repo: `/workspace/talent-scout/design-refs/` (`1-seline-analytics.jpg`, `2-column.jpg`, `4-calendly.jpg`).
+- Previews of all three are in the master folder, not in the repo: `talent-scout/design-refs/` (`1-seline-analytics.jpg`, `2-column.jpg`, `4-calendly.jpg`).
 
 ## 2. Design Tokens
 
@@ -39,19 +39,19 @@
 | `ink` | `#020520` | Headings | [src] Midnight Ink |
 | `body` | `#14141e` | Body text, UI labels | [src] Graphite Body |
 | `muted` | `#374151` | Secondary text, nav, table headers | [src] Slate Caption |
-| `helper` | `#6b7280` | Metadata, timestamps, placeholders (4.83:1 on white, the minimum allowed) | [src] Ash Helper |
+| `helper` | `#6b7280` | Metadata, timestamps, placeholders. Only on `card`/`canvas` (4.83:1 and 4.71:1). On `wash`/`subtle` use `muted` (`helper` is 4.39:1 and 4.41:1 there, which fails AA) | [src] Ash Helper |
 | `brand` | `#145aff` | Single accent: links, primary button, running node, highlight (5.34:1 on white) | [src] Royal Signal |
 | `brand-soft` | `#3b82f6` | Decorative wash/glow, "potential" dot. **Not for text** (3.68:1) | [src] Cobalt Glow |
 | `focus` | `#0099ff` | Focus ring | [src] Azure Focus |
-| `success` | `#16ca2e` | "passed" dot, border, icon. **Not for text** (2.21:1) | [src] Mint Win |
-| `danger` | `#f26052` | "failed" dot, border, icon. **Not for small text** (3.20:1) | [src] Coral Lost |
-| `warning` | `#ffa64d` | "retry" dot, border, icon. **Not for text** (1.94:1) | [src] Amber Pending |
-| `success-text` | `#15803d` | Success status text/labels (5.02:1) | [adapted]: Mint Win fails AA for text |
-| `danger-text` | `#b91c1c` | Error text, failed labels (6.47:1) | [adapted]: Coral Lost fails AA for text |
-| `warning-text` | `#b45309` | retry/needs_manual label text (5.02:1) | [adapted]: Amber Pending fails AA for text |
-| status tint | status color @ 10% opacity (`bg-success/10`, etc.) | Badge/node background | [adapted] |
+| `success` | `#16ca2e` | "passed" dot, border. **Not for text or icons** (2.21:1) | [src] Mint Win |
+| `danger` | `#f26052` | "failed" dot, border. **Not for small text or icons** (3.20:1) | [src] Coral Lost |
+| `warning` | `#ffa64d` | "retry" dot, border. **Not for text or icons** (1.94:1) | [src] Amber Pending |
+| `success-text` | `#15803d` | Success status text, labels, icons (5.02:1) | [adapted]: Mint Win fails AA for text |
+| `danger-text` | `#b91c1c` | Error text, failed labels, icons (6.47:1) | [adapted]: Coral Lost fails AA for text |
+| `warning-text` | `#b45309` | retry/needs_manual label text, icons (5.02:1) | [adapted]: Amber Pending fails AA for text |
+| status tint | status color @ 10% opacity (`bg-success/10`, etc.) | Badge/node background, always over an opaque `card` base (`warning-text` is 4.70:1 there, but 4.30:1 directly over `wash`) | [adapted] |
 
-I calculated all the contrast ratios above myself with the WCAG 2.x formula, against `#ffffff`.
+All contrast ratios use the WCAG 2.x formula, against `#ffffff` unless another background is named.
 
 ### 2.2 Graph Node Status Colors & Domain Statuses
 
@@ -62,25 +62,25 @@ I calculated all the contrast ratios above myself with the WCAG 2.x formula, aga
 | **passed** (`succeeded`, `check.passed`) | node finished/valid | `success` | `success/10` | `success-text` "Passed" | `check` | — |
 | **failed** (`failed`, `check.failed`) | node failed | `danger` | `danger/10` | `danger-text` "Failed" | `x` | — |
 | **retry** (`loop.retry`) | node retried | `warning` 2px dashed | `warning/10` | `warning-text` "Retry 2/3" | `rotate-ccw` | attempt badge in the corner |
-| **skipped** | node `skipped` | `line` dashed | `subtle` | `helper` "Skipped" | `minus` | 70% opacity |
+| **skipped** | node `skipped` | `line` dashed | `subtle` | `muted` "Skipped" | `minus` | No opacity on the label (`helper` on `subtle` fails AA) |
 
 The color-to-status mapping above is [adapted], derived from the *Status Dot* component [src]. Domain statuses use the same scheme:
 - Application: `review`, `in_session` = brand; `shortlisted` = success; `rejected`, `failed` = danger; `scoring` = warning; `applied`, `invited` = idle.
 - Score `needs_manual` = warning.
 
-**Statuses must never be distinguished by color alone.** Every status must have an icon + a text label.
+**Statuses must never be distinguished by color alone.** Every status must have an icon + a text label. Status icons use the `-text` variant of their color (`brand` for running). Borders and dots may use the lighter colors because the icon and label carry the meaning.
 
 ### 2.3 Typography
 
 - Sans: **Inter** [src] (400/500/600, never above 600). Load via `@fontsource-variable/inter`.
-- Mono: **Roboto Mono** [src] for IDs, model names, token counts, cost, and event `seq`. The reference only has 500/700. Sizes 12–14px for UI [adapted] (reference: 12px and 22px).
-- Pretendard and Font Awesome, detected in the reference, are **not used**. Icons use `lucide-svelte` [adapted].
+- Mono: **Roboto Mono** [src] for IDs, model names, token counts, cost, and event `seq`. The reference only has 500/700. Sizes 12–14px for UI [adapted] (reference: 12px and 22px). Load weight 500 via `@fontsource/roboto-mono`.
+- Pretendard and Font Awesome, detected in the reference, are **not used**. Icons use `@lucide/svelte` (the Svelte 5 package) [adapted].
 
 | Token | Size / line-height / tracking | Weight | Used for | Origin |
 |---|---|---|---|---|
 | `text-caption` | 12px / 1.2 → **1.5** | 400–500 | metadata, uppercase table headers, badges | [src] size; line-height [adapted] for readability |
 | `text-body-sm` | 14px / 1.43 / 0 | 400 | default dashboard text, table cells | [src] |
-| `text-body` | 16px / 1.63 | 400 | chat bubbles, transcript, applicant form | [src] |
+| `text-base` | 16px / 1.63 | 400 | chat bubbles, transcript, applicant form | [src] |
 | `text-subheading` | 20px / 1.4 / -0.16px | 500–600 | card/section titles | [src] |
 | `text-heading-sm` | 22px / 1.4 / -0.2px | 600 | dashboard page titles | [src] |
 | `text-heading` | 40px / 1.05 / -1.48px | 600 | applicant intro & thank-you screen titles, landing | [src] |
@@ -122,7 +122,7 @@ The color-to-status mapping above is [adapted], derived from the *Status Dot* co
 
   --text-caption: 12px;    --text-caption--line-height: 1.5;
   --text-body-sm: 14px;    --text-body-sm--line-height: 1.43;
-  --text-body: 16px;       --text-body--line-height: 1.63;
+  --text-base: 16px;       --text-base--line-height: 1.63;
   --text-subheading: 20px; --text-subheading--line-height: 1.4; --text-subheading--letter-spacing: -0.16px;
   --text-heading-sm: 22px; --text-heading-sm--line-height: 1.4; --text-heading-sm--letter-spacing: -0.2px;
   --text-heading: 40px;    --text-heading--line-height: 1.05;   --text-heading--letter-spacing: -1.48px;
@@ -138,6 +138,8 @@ The color-to-status mapping above is [adapted], derived from the *Status Dot* co
 ```
 
 Don't use Tailwind's default palette colors (`blue-500`, `gray-*`, etc.) in components. Use only the tokens above. The only exception is `ring-focus`.
+
+The 16px size token is `text-base`, not `text-body`: `text-body` is the color from `--color-body`, and with both tokens Tailwind v4 emits only the color, silently dropping the size.
 
 ## 3. Components
 
@@ -159,7 +161,7 @@ Don't use Tailwind's default palette colors (`blue-500`, `gray-*`, etc.) in comp
 - **Chat bubble.**
   - AI: left, `card` + `line` border, `rounded-panel` (top-left corner 4px).
   - Applicant: right, `wash` fill, `body` text.
-  - Text `text-body` 16px, max-width 75ch [adapted].
+  - Text `text-base` 16px, max-width 75ch [adapted].
   - Streaming: a blinking caret at the end. An "AI is typing" indicator with `aria-live="polite"`.
 - **ScoreCard + EvidenceQuote.** `rounded-card` card, 16px padding.
   - Header: criterion label (`subheading` 20px) + a large `3/5` score (mono, `ink`) + a 5-segment `brand` bar.
@@ -195,14 +197,14 @@ Don't use Tailwind's default palette colors (`blue-500`, `gray-*`, etc.) in comp
   - 12-column grid: transcript on the left, 7 columns (scrolls on its own), ScoreCards on the right, 5 columns (sticky), "View graph run" link.
   - Below 1024px, the transcript and scores become tabs.
 - **Live graph** (`/dashboard/runs/[runId]`):
-  - `wash` canvas. Nodes in a fixed layout (left→right: planner → plan_check → interviewer ⇄ judge → guard → scorer ⇄ evidence_check → recruiter_gate).
+  - Full-width page (the 1200px content limit doesn't apply). `wash` canvas. Nodes in a fixed two-row layout at 100% zoom: top row left→right planner → plan_check → interviewer ⇄ judge, bottom row right→left guard → scorer ⇄ evidence_check → recruiter_gate. One row would need about 2000px and shrink 14px labels to about 6px.
   - 360px right panel: event timeline (mono `seq`, status icon, relative time) + selected node detail (model, attempt, tokens, duration, cost).
   - Toolbar: Live/Replay toggle, total cost, run status.
 - **Apply form** (`/apply/[jobId]`):
   - Single column, max 640px, `canvas` background with a `wash` band at the top holding the job title (`heading` 40px).
   - The JD in a collapsible card.
   - Form: Name, Email, CV (`rounded-panel` dashed `line` dropzone), primary "Submit application".
-  - Success: a card with a `mail-check` icon and the text "Check your email".
+  - Success: a card with a `check` icon showing the API's `message` as is, because the delivery channel depends on `EMAIL_MODE`.
 - **Applicant chat** (`/s/[token]`). Single column max 720px, calm, no dashboard elements.
   - Intro: `heading` + 3 rule points (±15 min, 3–5 topics, answers are reviewed by a human) + primary "Start".
   - Chat:
@@ -220,11 +222,11 @@ Don't use Tailwind's default palette colors (`blue-500`, `gray-*`, etc.) in comp
 
 - Minimum WCAG AA contrast:
   - normal text ≥ 4.5:1, large text and meaningful graphical elements ≥ 3:1
-  - `success`/`warning`/`brand-soft`/`focus` are never used as text colors; for text use the `-text` variants
+  - `success`/`warning`/`brand-soft`/`focus` are never used as text colors, and `success`/`warning`/`danger` never as icon colors; use the `-text` variants
 - Statuses always have an icon + text, never color alone.
 - Focus is visible on all interactive elements (`focus-visible:ring-2 ring-focus ring-offset-2`). Logical tab order.
 - Graph: every node is keyboard-focusable and has an `aria-label` (e.g. "Scorer, worker, retry attempt 2 of 3"). The event timeline is the text alternative to the graph (an `<ol>` list).
-- Chat: the message list is `role="log"` + `aria-live="polite"`. The countdown is announced only at 5 minutes and 1 minute remaining.
+- Chat: the message list is `role="log"` + `aria-live="polite"`, and a streaming reply stays out of it (`aria-hidden`) until `message.completed`, so a reply is announced once and not chunk by chunk. The countdown is announced only at 5 minutes and 1 minute remaining.
 - Animations (pulse, edge dash, typing caret) are disabled under `prefers-reduced-motion: reduce`.
 - Forms: explicit `<label>`, errors announced (`aria-invalid`, `aria-describedby`). The 2 MB limit is explained before upload.
 - UI language: English, `<html lang="en">`.

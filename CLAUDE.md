@@ -14,7 +14,7 @@ Talent Scout: recruiter-side AI screening. Applicant applies → gets a session 
 7. The GitHub issue being worked on (`gh issue view <n>`) — the source of the task
 
 ## Stack
-SvelteKit (Svelte 5, runes) + strict TypeScript, **server-side (BFF) on `@sveltejs/adapter-vercel`** (SSR on, no `vercel.json` rewrite; design in `docs/SERVER-SIDE.md`). The browser talks only to the SvelteKit server; `+page.server.ts` loads/actions and `+server.ts` endpoints call the Go API through `src/lib/server/api`. Exception: SSE `EventSource` connects straight to Go (short-lived `sse_token` for recruiter runs, path token for applicant sessions). Tailwind CSS. Graph: `@xyflow/svelte`. API types: `openapi-typescript` from the server's `openapi.yaml` (copied to `src/lib/server/api/openapi.yaml`). Validation: zod. Tests: `svelte-check`, Vitest (server modules), Playwright. Package manager: pnpm. Deploy: **Vercel Hobby** (Functions: max 300 s, request/response body 4.5 MB — never proxy SSE through a function; the 2 MB CV fits), default domain `talentscout.vercel.app` (or another available name). Verify on the Day 1 preview that `/apply/x`, `/s/x`, `/dashboard/jobs` render server-side.
+SvelteKit 3 (Svelte 5, runes; Kit 3 removed `$lib`, so it is kept through `alias` in `vite.config.ts`) + strict TypeScript, **server-side (BFF) on `@sveltejs/adapter-vercel`** (SSR on, no `vercel.json` rewrite; design in `docs/SERVER-SIDE.md`). The browser talks only to the SvelteKit server; `+page.server.ts` loads/actions and `+server.ts` endpoints call the Go API through `src/lib/server/api`. Exception: SSE `EventSource` connects straight to Go (short-lived `sse_token` for recruiter runs, path token for applicant sessions). Tailwind CSS. Graph: `@xyflow/svelte`. API types: `openapi-typescript` from the server's `openapi.yaml` (copied to `src/lib/server/api/openapi.yaml`). Validation: zod. Tests: `svelte-check`, Vitest (server modules), Playwright. Package manager: pnpm. Deploy: **Vercel Hobby** (Functions: max 300 s, request/response body 4.5 MB — never proxy SSE through a function; the 2 MB CV fits), default domain `talentscout.vercel.app` (or another available name). Verify on the Day 1 preview that `/apply/x`, `/s/x`, `/dashboard/jobs` render server-side.
 
 **One app, routed by path:** the recruiter at `/dashboard/...`, the applicant apply form at `/apply/[jobId]`, the AI session link from the email at `/s/[token]` (`${PUBLIC_APP_URL}/s/<token>`). Vercel's free subdomain is single-level (`apply.talentscout.vercel.app` is not possible); if a custom domain comes later, `apply.` just points to the same project — no routing changes.
 
@@ -28,19 +28,20 @@ talent-scout-client/
 │   │   ├── server/                 # server-only ($lib/server can't be imported by browser code)
 │   │   │   ├── session.ts          # ts_session cookie: name/options, set/clear/read
 │   │   │   ├── guards.ts           # requireRecruiter(event), normalizeRefererPath
-│   │   │   ├── client-ip.ts        # X-Forwarded-For + X-BFF-Secret headers for the apply call
+│   │   │   ├── client-ip.ts        # X-Forwarded-For + X-BFF-Secret headers for Go API calls
 │   │   │   └── api/
 │   │   │       ├── openapi.yaml    # copy from the server
 │   │   │       ├── schema.d.ts     # openapi-typescript output
 │   │   │       ├── types.ts        # interface TalentScoutApi, error {error:{code,message}}
-│   │   │       ├── real.ts         # event.fetch → API_BASE_URL
+│   │   │       ├── real.ts         # getRequestEvent().fetch → API_BASE_URL
 │   │   │       ├── mock.ts         # mock implementation (fixtures)
 │   │   │       ├── index.ts        # api = USE_MOCK ? mock : real
-│   │   │       └── fixtures/       # jobs, application detail, run-events.json (order per EVENTS.md §6)
+│   │   │       └── fixtures/       # REST fixtures: jobs, application detail
 │   │   ├── events.ts               # browser: event types from docs/EVENTS.md + EventSource wrapper (sse_token, since_seq, reconnect, mock replay)
-│   │   ├── stores/                 # session chat state, graph run state (no tokens)
+│   │   ├── mock/                   # browser-safe replay data: run-events.json (order per EVENTS.md §6), chat stream
+│   │   ├── stores/                 # chat and graph state factories, created per page (no tokens)
 │   │   └── components/             # ChatWindow, MessageBubble, ScoreCard, EvidenceQuote, GraphView, StatusBadge
-│   ├── hooks.server.ts             # handle (cookie → locals.recruiter), handleFetch (Bearer only for API_BASE_URL), handleError (redacted)
+│   ├── hooks.server.ts             # handle (cookie → locals.recruiter, guards /dashboard/* except login), handleFetch (Bearer only for API_BASE_URL), handleError (redacted)
 │   └── routes/
 │       ├── +page.svelte            # short landing + link to /dashboard
 │       ├── apply/[jobId]/          # +page.server.ts: job load + apply action (CV ≤ 2 MB, forwards client IP)
@@ -49,7 +50,7 @@ talent-scout-client/
 │           ├── +page.server.ts     # redirect → /dashboard/jobs
 │           ├── login/              # login action → sets httpOnly ts_session cookie
 │           ├── logout/             # logout action → clears the cookie
-│           └── (recruiter)/        # +layout.server.ts guard (no session → /dashboard/login?redirectTo=)
+│           └── (recruiter)/        # recruiter pages and shared layout; the guard itself is in handle
 │               ├── jobs/           # job list (MVP: 1 seeded job, read-only)
 │               ├── jobs/[jobId]/   # applicant list
 │               ├── applications/[applicationId]/  # review + decision/resend-invite actions; cv/+server.ts streams the CV
@@ -76,12 +77,17 @@ talent-scout-client/
 | `/dashboard/runs/[runId]` | GraphView: nodes `planner, plan_check, interviewer, judge, guard, scorer, evidence_check, recruiter_gate`; color per status (pending/running/succeeded/failed), edges animate on `edge.traversed`, `attempt` badge on `loop.retry`, event timeline panel + node detail (model, tokens, duration, cost). Live & replay modes. | `GET /graph-runs/{runId}`, `POST /auth/sse-token` (server-side), SSE `/graph-runs/{runId}/events?sse_token=&since_seq=` (browser → Go) |
 
 ## Mock-First
-- `USE_MOCK=true` (private env, read on the server) → `$lib/server/api` exports the mock implementation (no network); loads/actions don't know which one they get. In mock mode the page load returns a mock flag instead of an SSE URL, and `events.ts` replays `fixtures/run-events.json` in the browser with 300–800 ms delays and streams `message.delta` word by word.
+- `USE_MOCK=true` (private env, read on the server) → `$lib/server/api` exports the mock implementation (no network); loads/actions don't know which one they get. In mock mode the page load returns a mock flag instead of an SSE URL, and `events.ts` replays `src/lib/mock/run-events.json` in the browser (`$lib/server` can't be imported there) with 300–800 ms delays and streams `message.delta` word by word.
 - Fixtures must be valid against the types from `schema.d.ts` / `events.ts` (checked by `svelte-check`).
 - Day 4 switches to the real API: `USE_MOCK=false`, `API_BASE_URL=http://localhost:8080`. The mock stays in use for Playwright.
 
 ## Conventions
 - Svelte 5 runes (`$state`, `$derived`, `$props`), strict TypeScript, no `any`.
+- No request or user state at module level: on the server a module is shared between requests. Create chat/graph state per page.
+- Auth is enforced in `handle`: layout loads don't protect form actions or `+server.ts`, and a page load can still run when a layout load redirects.
+- Chat form: pass a custom callback to `use:enhance`, because the default reruns every load after each message.
+- `EventSource`: call `close()` on the last event (`session.ended`, `run.completed`, `run.failed`), or the browser reconnects by itself. Its errors expose no HTTP status, so refetch through a server load to find out why.
+- `/s/*` responses: `Referrer-Policy: no-referrer` and `X-Robots-Tag: noindex`, because the token is in the URL.
 - All Go API calls go through `$lib/server/api` from `+page.server.ts` / `+server.ts` (forms via actions); no `fetch` to Go in components. The only browser → Go traffic is SSE `EventSource`.
 - Nothing returned from a `load` or action may contain the recruiter token (page data is readable by JS). Only the login action sets the session cookie.
 - Don't forward the browser's `Authorization` header; `handleFetch` adds the Bearer from the cookie.
@@ -98,7 +104,7 @@ talent-scout-client/
 5. Out of scope: applicant accounts, multi-tenant, full i18n, dark mode. Post-MVP (don't build): job create/edit pages, a Playwright suite beyond 1 smoke test.
 
 ## Definition of Done (per task)
-- [ ] `pnpm check` (svelte-check) 0 errors, `pnpm lint` clean
+- [ ] `pnpm check` (svelte-check) 0 errors, `pnpm lint` clean, `pnpm test` green
 - [ ] `pnpm test:e2e` (1 Playwright smoke, mock mode) green once the smoke test exists
 - [ ] Pages use types from the contract; mock fixtures valid
 - [ ] Loading, empty, and error states handled
@@ -119,7 +125,7 @@ Project skills live in `.claude/skills/`: `issue-workflow`, `new-page-with-mock`
 2. Switch the label to `status:in-progress` (`gh issue edit <n> --remove-label status:todo --add-label status:in-progress`).
 3. Work **only in a git worktree** (see `WORKFLOW.md` §11): check that `git rev-parse --git-dir` contains `/worktrees/`. If not → stop and ask a human to run `git worktree add ../wt/client-<n> -b feat/<n>-<slug> origin/main`. Don't create branches in the main checkout. 1 issue = 1 worktree = 1 branch = 1 PR. If the worktree has no branch yet, create it from `origin/main`: `feat/<n>-<slug>` (`fix/…` for bugs, `chore/…` for chores; `.env` copied manually, `pnpm install` per worktree).
 4. Implement only the acceptance criteria. Claiming a fix (type:bug, "fixes X") → run `verify-this` and put the verdict in the PR body.
-5. Run `deslop` on the branch diff, then the green checks: `pnpm check`, `pnpm lint`, `pnpm build`, `pnpm test:e2e` (once the smoke test exists).
+5. Run `deslop` on the branch diff, then the green checks: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm test:e2e` (once the smoke test exists).
 6. **UI PRs only:** run `impeccable audit <route>` (report-only), then `impeccable polish <route>` on the PR's own page (existing `DESIGN.md` tokens only); re-run the green checks.
 7. Run `thermo-nuclear-review` + `thermo-nuclear-code-quality-review` — **report-only, once per PR** (no review→edit loop; token cost). Fix only High findings / presumptive blockers and re-run the green checks; list the rest in the PR body under "Review findings (not fixed)".
 8. Failing (checks or blocker fixes) → **max 3 attempts** in total. Still failing → label `status:blocked`, comment on the issue (what was tried, the last error, the suspected cause), move to the next issue.

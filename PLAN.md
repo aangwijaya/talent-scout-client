@@ -1,6 +1,6 @@
 # PLAN — Frontend (talent-scout-client), 7 Days
 
-Built by Claude. References: `CLAUDE.md`, `DESIGN.md`, `docs/*`, `../WORKFLOW.md` (a copy of the rules is in `CLAUDE.md`). Each block below = one or more GitHub issues labeled `agent:claude` + `day:N`; work through issues. Tick when the DoD is met.
+Built by Claude. References: `CLAUDE.md`, `DESIGN.md`, `docs/*`, `WORKFLOW.md` (a copy of the rules is in `CLAUDE.md`). Each block below = one or more GitHub issues labeled `agent:claude` + `day:N`; work through issues. Tick when the DoD is met.
 
 1-week scope: no create/edit job page (1 seeded job), invite links copied from the dashboard ("Get invite link"), 1 recruiter password, **1 Playwright smoke test**.
 
@@ -9,7 +9,7 @@ Built by Claude. References: `CLAUDE.md`, `DESIGN.md`, `docs/*`, `../WORKFLOW.md
 - [ ] `.env.example` (`API_BASE_URL`, `USE_MOCK`, `BFF_SHARED_SECRET`, private), `hooks.server.ts` skeleton
 - [ ] `@theme` design tokens from `DESIGN.md` + base components
 - [ ] `$lib/server/api` (types, real/mock switch on `USE_MOCK`, fixtures) + browser `lib/events.ts` (manual types from `docs/API.md`/`EVENTS.md`, then `openapi-typescript`)
-- [ ] Minimal GitHub Actions CI (`pnpm check`, `pnpm lint`, `pnpm build`)
+- [ ] Minimal GitHub Actions CI (`pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build`)
 - [ ] Vercel preview: `/apply/x`, `/s/x`, `/dashboard/jobs` render server-side (no 404)
 - **Done:** `pnpm check` green; `pnpm build` succeeds
 

@@ -6,13 +6,13 @@
 
 1. The browser only talks to the SvelteKit server (Vercel function) — never to the Go API — except for SSE streams.
 2. Recruiter submits the password to the `login` form action → server calls Go `POST /auth/login` → sets an **httpOnly** `ts_session` cookie (`maxAge` from `expires_at`, 12 h). The token is never returned to the browser.
-3. `hooks.server.ts` `handle` reads the cookie into `locals.recruiter`; the `(recruiter)` layout guard redirects to `/dashboard/login?redirectTo=…` (303) if missing/expired.
+3. `hooks.server.ts` `handle` reads the cookie into `locals.recruiter` and redirects `/dashboard/*` (except login) to `/dashboard/login?redirectTo=…` (303) if missing/expired.
 4. `+page.server.ts` loads/actions call the Go API through `src/lib/server/api` with private env `API_BASE_URL`; `handleFetch` adds `Authorization: Bearer` only for that host.
 5. Go returns 401 → server deletes the cookie and redirects to `/dashboard/login`.
 6. `USE_MOCK=true` (private env) swaps the real API client for the mock implementation on the server; pages don't know which one they get.
 7. Applicants: `/apply/[jobId]` uploads the CV through a form action (zod + size/MIME check, ≤ 2 MB) → Go; `/s/[token]` loads/sends chat via server.
 8. SSE exception: the server load mints a ~60 s, run-scoped `sse_token` (Go `POST /auth/sse-token`); the browser opens `EventSource` directly to Go with `sse_token` + `since_seq`; on reconnect it fetches a fresh token from a small `+server.ts` endpoint. Go allows CORS only on SSE `GET` routes (origins from `FRONTEND_ORIGIN`).
-9. Applicant IP: on the apply action the SvelteKit server sends `X-Forwarded-For: <event.getClientAddress()>` plus `X-BFF-Secret: <BFF_SHARED_SECRET>`; Go trusts that IP for the 5/IP/hour rate limit only when the secret matches.
+9. Applicant IP: on Go API calls the SvelteKit server sends `X-Forwarded-For: <event.getClientAddress()>` plus `X-BFF-Secret: <BFF_SHARED_SECRET>`; Go trusts that IP for the 5/IP/hour rate limit only when the secret matches.
 10. Logout = form action that deletes the cookie (token is stateless, no server call).
 
 ## Why server-side instead of a static SPA
@@ -28,7 +28,7 @@
 ### Patterns to mirror
 
 - Auth module with an auth `handle` in `hooks.server.ts` that populates `event.locals` (user, isAuthenticated).
-- `requireAuth(event)` guard in `+layout.server.ts`, redirecting 303 to the login page with `?referer=` (we call it `?redirectTo=`), sanitised by `normalizeRefererPath` (prevents open redirects).
+- `requireAuth(event)` guard, redirecting 303 to the login page with `?referer=` (we call it `?redirectTo=`), sanitised by `normalizeRefererPath` (prevents open redirects). The reference runs it in `+layout.server.ts`; we run it in `handle` (see lesson 5 below).
 - Cookie manager: `httpOnly`, `secure` in production, `sameSite: 'lax'`, `path: '/'`.
 - Form actions: `request.formData()` → zod `safeParse` → `fail(400, { errors: z.flattenError(...) })`.
 - Typed API client + endpoint map, called with `event.fetch`; private env via `$env/dynamic/private`.
@@ -42,6 +42,7 @@
 2. **No endpoint that accepts tokens from the client and writes them into cookies.** That enables session fixation; only the login action sets the session cookie, from the Go response.
 3. **A proxy must not forward the browser's `Authorization` header.** The browser shouldn't hold a token at all; the server attaches it from the cookie.
 4. **No debug `console.log` of API responses, and define `handleError`** to log safely (no tokens, no query strings) and return a generic message.
+5. **Don't rely on a layout guard.** A `+layout.server.ts` guard doesn't cover form actions or `+server.ts`, and a page load can still run while it redirects. Guard in `handle` instead.
 
 ## Talent Scout design
 
@@ -65,12 +66,12 @@ src/
 │   └── api/
 │       ├── index.ts           # export const api = USE_MOCK ? mockApi : realApi
 │       ├── types.ts           # interface TalentScoutApi
-│       ├── real.ts            # event.fetch → API_BASE_URL
+│       ├── real.ts            # getRequestEvent().fetch → API_BASE_URL
 │       └── mock.ts            # fixtures
 └── routes/
     ├── dashboard/login/+page.server.ts          # login action
     ├── dashboard/logout/+page.server.ts         # logout action
-    ├── dashboard/(recruiter)/+layout.server.ts  # guard (jobs, applications, runs live here)
+    ├── dashboard/(recruiter)/                   # jobs, applications, runs (guarded by handle)
     ├── dashboard/(recruiter)/runs/[runId]/+page.server.ts         # load mints sse_token
     ├── dashboard/(recruiter)/runs/[runId]/sse-token/+server.ts    # POST: reconnect mint
     ├── apply/[jobId]/+page.server.ts  # job load + apply action
@@ -81,8 +82,8 @@ src/
 
 - `login` action: zod `{password}` → Go `POST /auth/login` → on 200 set cookie `ts_session=<access_token>`: `httpOnly`, `secure` (prod), `sameSite: 'lax'`, `path: '/'`, `maxAge = expires_at − now`. 401 → `fail(401, { formErrors: ['Wrong password'] })`. Then `redirect(303, normalizeRefererPath(redirectTo) ?? '/dashboard/jobs')`.
 - No refresh logic (Go token is stateless, 12 h, no refresh).
-- `handle`: read cookie → `locals.recruiter = { token, expiresAt }` or `null`; expired → delete cookie.
-- `(recruiter)/+layout.server.ts`: no `locals.recruiter` → `redirect(303, '/dashboard/login?redirectTo=' + path)`. Return only `{ recruiter: { expiresAt } }` — **never the token**.
+- `handle`: read cookie → `locals.recruiter = { token, expiresAt }` or `null`; expired → delete cookie. For `/dashboard/*` except login: no `locals.recruiter` → `redirect(303, '/dashboard/login?redirectTo=' + path)`. This also covers form actions and `+server.ts`.
+- Loads may return `{ recruiter: { expiresAt } }` — **never the token**.
 - `handleFetch`: add `Authorization: Bearer <token>` only when the request URL starts with `API_BASE_URL`.
 - `handleError`: log status + route id, redact tokens/query strings, return `{ message: 'Something went wrong' }`.
 - Go 401 in any load/action → clear cookie → `redirect(303, '/dashboard/login?redirectTo=…')`.
@@ -100,7 +101,7 @@ src/
 
 ### Mock mode
 
-`src/lib/server/api/types.ts` defines one `TalentScoutApi` interface; `real.ts` and `mock.ts` implement it; `index.ts` picks one from `USE_MOCK`. Loads/actions import only `api` from `$lib/server/api`. Tests mock that module.
+`src/lib/server/api/types.ts` defines one `TalentScoutApi` interface; `real.ts` and `mock.ts` implement it; `index.ts` picks one from `USE_MOCK`. `real.ts` gets the request through `getRequestEvent()`, so `api` can stay a singleton and `handleFetch` still runs. Replay data the browser needs lives in `src/lib/mock/`, because `$lib/server` can't be imported from browser code. Loads/actions import only `api` from `$lib/server/api`. Tests mock that module.
 
 ### SSE exception
 
@@ -115,8 +116,8 @@ src/
 
 ### Applicant flows
 
-- `/apply/[jobId]`: load fetches the job via `GET /jobs/{jobId}/public` (404 → error page). `apply` action: zod fields + CV check (≤ 2 MB, `application/pdf` / allowed MIME) → forward multipart to Go `POST /jobs/{jobId}/applications` → show the returned `message` (the screening link arrives by email). Go errors (`invalid_file`, 413 `file_too_large`, 409 `already_applied`, 429 `rate_limited`) → `fail(4xx)` with a friendly message.
-- **Trusted client IP (approved):** Go limits 5 applies/IP/hour, but behind the BFF every request comes from Vercel's IPs. So the `apply` action sends `X-Forwarded-For: <event.getClientAddress()>` and `X-BFF-Secret: <BFF_SHARED_SECRET>` (private env, same value on Vercel and Railway). Go compares the secret in constant time; match → use the first XFF address as the client IP; no match / missing secret / unset env → ignore XFF and use the TCP peer address. The secret is never logged or returned. Implemented in server [#21](https://github.com/aangwijaya/talent-scout-server/issues/21) and client [#15](https://github.com/aangwijaya/talent-scout-client/issues/15).
+- `/apply/[jobId]`: load fetches the job via `GET /jobs/{jobId}/public` (404 → error page). `apply` action: zod fields + CV check (≤ 2 MB, `application/pdf` / allowed MIME) → forward multipart to Go `POST /jobs/{jobId}/applications` → show the returned `message`. Go errors (`invalid_file`, 413 `file_too_large`, 409 `already_applied`, 429 `rate_limited`) → `fail(4xx)` with a friendly message.
+- **Trusted client IP (approved):** Go limits 5 applies/IP/hour, but behind the BFF every request comes from Vercel's IPs. So the server API client sends `X-Forwarded-For: <event.getClientAddress()>` and `X-BFF-Secret: <BFF_SHARED_SECRET>` (private env, same value on Vercel and Railway). Go compares the secret in constant time; match → use the first XFF address as the client IP; no match / missing secret / unset env → ignore XFF and use the TCP peer address. The secret is never logged or returned. Implemented in server [#21](https://github.com/aangwijaya/talent-scout-server/issues/21) and client [#15](https://github.com/aangwijaya/talent-scout-client/issues/15).
 - `/s/[token]`: load validates the session token via Go (404 → error page); `message` action posts the chat message. SSE as above (public path token). No cookie needed.
 
 ## Sequence diagrams
@@ -133,7 +134,7 @@ sequenceDiagram
   G-->>K: 200 {access_token, expires_at}
   K-->>B: 303 /dashboard/jobs + Set-Cookie ts_session (httpOnly)
   B->>K: GET /dashboard/jobs (cookie)
-  K->>K: handle → locals.recruiter; layout guard OK
+  K->>K: handle → locals.recruiter; guard OK
   K->>G: GET /... (handleFetch adds Bearer)
   alt 200
     G-->>K: data
@@ -158,7 +159,7 @@ sequenceDiagram
   else valid
     K->>G: POST /jobs/{jobId}/applications (multipart + X-Forwarded-For + X-BFF-Secret)
     G-->>K: 201 {application_id, status, message}
-    K-->>B: page data {message} (screening link is emailed)
+    K-->>B: page data {message}
   end
 ```
 
