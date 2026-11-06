@@ -23,4 +23,10 @@ Rules:
 
 ## Entries
 
-_(none yet)_
+### 2026-11-06 — #1 SvelteKit 3 removed `$lib`
+- **Context:** scaffolding the app with the latest SvelteKit (3.1.1)
+- **Problem:** any `$lib` import fails the build with `module_removed_lib`, while `CLAUDE.md`, `docs/SERVER-SIDE.md`, skills and issues all use `$lib`
+- **Cause:** the docs were written against the SvelteKit 2 API; Kit 3 replaced `$lib` with the `#lib` package import
+- **Lesson:** keep `$lib` through the official `alias: { $lib: 'src/lib' }` in `vite.config.ts` (typecheck passes, and importing `$lib/server` from browser code still fails the build); check framework majors against the docs before scaffolding
+- **Follow-up:** none
+- **Repeated?:** first time
