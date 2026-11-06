@@ -6,7 +6,10 @@ const events = mockRunEvents[MOCK_RUN_ID].slice(0, 3);
 
 describe('replayEvents', () => {
 	beforeEach(() => vi.useFakeTimers());
-	afterEach(() => vi.useRealTimers());
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
 
 	it('delivers events in order, one delay at a time, then reports completion', () => {
 		const seen: RunEvent[] = [];
@@ -22,12 +25,16 @@ describe('replayEvents', () => {
 		expect(onDone).toHaveBeenCalledOnce();
 	});
 
-	it('waits 300–800 ms between events by default', () => {
+	it.each([
+		['300 ms', 0, 300],
+		['800 ms', 1, 800]
+	])('waits at least %s between events by default', (_name, random, delay) => {
+		vi.spyOn(Math, 'random').mockReturnValue(random);
 		const onEvent = vi.fn();
 		replayEvents(events, onEvent);
-		vi.advanceTimersByTime(299);
+		vi.advanceTimersByTime(delay - 1);
 		expect(onEvent).not.toHaveBeenCalled();
-		vi.advanceTimersByTime(501);
+		vi.advanceTimersByTime(1);
 		expect(onEvent).toHaveBeenCalledOnce();
 	});
 

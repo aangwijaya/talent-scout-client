@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-06 — #3 A test on random delays passed locally and failed in CI
+- **Context:** testing the default 300–800 ms delay of `replayEvents`
+- **Problem:** the test failed about 1 run in 30, so it passed before the push and failed on the PR
+- **Cause:** it advanced timers by 800 ms with real `Math.random`, and two delays can add up to less than that
+- **Lesson:** stub `Math.random` in any test that depends on it, and run a new timing test many times before pushing
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-06 — #3 SvelteKit 3 replaced `$env/dynamic/private`
 - **Context:** reading `API_BASE_URL` and `USE_MOCK` in the server API layer
 - **Problem:** `svelte-check` reports "Cannot find module `$env/dynamic/private`", while `CLAUDE.md`, `docs/SERVER-SIDE.md` and the issues all name it
