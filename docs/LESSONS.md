@@ -23,6 +23,22 @@ Rules:
 
 ## Entries
 
+### 2026-11-07 — #13 Kit 3 `handleError` also receives `error()` throws
+- **Context:** returning the generic message that `docs/SERVER-SIDE.md` and the issue ask for
+- **Problem:** always returning it would have replaced every friendly `error(404, …)`/`error(410, …)` message, and the hook types had moved, so `Handle` no longer imports from `@sveltejs/kit`
+- **Cause:** Kit 3 calls the hook for app and framework errors as well, with `{ kind, error, event }` instead of `{ error, event, status, message }`; hook types now live in `@sveltejs/kit/hooks`
+- **Lesson:** in `handleError`, return early unless `kind === 'unknown'`; read a framework hook's types in the installed version before following docs written against the previous major
+- **Follow-up:** none
+- **Repeated?:** same root cause as 2026-11-06 #1 and #3 (docs written against SvelteKit 2)
+
+### 2026-11-07 — #13 Auth checks that look right but are not enough in Kit
+- **Context:** the `/dashboard/*` guard and "never forward the browser's cookies" in `handleFetch`
+- **Problem:** `url.pathname.startsWith('/dashboard')` lets `/%64ashboard/jobs` reach a recruiter route, and deleting the `cookie` header in `handleFetch` does not stop the cookie reaching an API on the same hostname (`localhost` in dev)
+- **Cause:** Kit matches routes on the decoded path, and its inner `fetch` adds cookies back after `handleFetch` runs, unless `credentials` is `omit`
+- **Lesson:** decide route access from `event.route.id`, and send API requests with `credentials: 'omit'`; check security behavior on a running build, because unit tests with a fake `fetch` cannot see either problem
+- **Follow-up:** unit tests in `guards.test.ts` and `hooks.server.test.ts`
+- **Repeated?:** first time
+
 ### 2026-11-06 — #3 A test on random delays passed locally and failed in CI
 - **Context:** testing the default 300–800 ms delay of `replayEvents`
 - **Problem:** the test failed about 1 run in 30, so it passed before the push and failed on the PR

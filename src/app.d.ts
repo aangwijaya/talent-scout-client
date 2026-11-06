@@ -3,7 +3,9 @@
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			recruiter: import('$lib/server/session').RecruiterSession | null;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

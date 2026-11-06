@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '$app/env/private';
-import { redirect } from '@sveltejs/kit';
 import { getRequestEvent } from '$app/server';
-import { SESSION_COOKIE } from '../session';
+import { redirectToLogin } from '../guards';
+import { clearSessionCookie } from '../session';
 import { API_ERROR_CODES, ApiError, type ApiErrorCode, type TalentScoutApi } from './types';
 
 function isApiErrorCode(code: unknown): code is ApiErrorCode {
@@ -40,8 +40,8 @@ async function send(path: string, init?: RequestInit, redirectOn401 = true): Pro
 	}
 	if (res.ok) return res;
 	if (res.status === 401 && redirectOn401) {
-		event.cookies.delete(SESSION_COOKIE, { path: '/' });
-		redirect(303, `/dashboard/login?redirectTo=${encodeURIComponent(event.url.pathname)}`);
+		clearSessionCookie(event.cookies);
+		redirectToLogin(event.url);
 	}
 	throw await toApiError(res);
 }

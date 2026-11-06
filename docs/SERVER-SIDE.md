@@ -63,6 +63,7 @@ src/
 ├── lib/server/
 │   ├── session.ts             # cookie name/options, set/clear, read
 │   ├── guards.ts              # requireRecruiter(event), normalizeRefererPath
+│   ├── redact.ts              # strips credentials from log text
 │   └── api/
 │       ├── index.ts           # export const api = USE_MOCK ? mockApi : realApi
 │       ├── types.ts           # interface TalentScoutApi
@@ -80,12 +81,12 @@ src/
 
 ### Auth
 
-- `login` action: zod `{password}` → Go `POST /auth/login` → on 200 set cookie `ts_session=<access_token>`: `httpOnly`, `secure` (prod), `sameSite: 'lax'`, `path: '/'`, `maxAge = expires_at − now`. 401 → `fail(401, { formErrors: ['Wrong password'] })`. Then `redirect(303, normalizeRefererPath(redirectTo) ?? '/dashboard/jobs')`.
+- `login` action: zod `{password}` → Go `POST /auth/login` → on 200 set cookie `ts_session=<expires_at as epoch ms>.<access_token>` (the token is opaque, so the expiry is stored next to it): `httpOnly`, `secure` (prod), `sameSite: 'lax'`, `path: '/'`, `maxAge = expires_at − now`. 401 → `fail(401, { formErrors: ['Wrong password'] })`. Then `redirect(303, normalizeRefererPath(redirectTo) ?? '/dashboard/jobs')`.
 - No refresh logic (Go token is stateless, 12 h, no refresh).
 - `handle`: read cookie → `locals.recruiter = { token, expiresAt }` or `null`; expired → delete cookie. For `/dashboard/*` except login: no `locals.recruiter` → `redirect(303, '/dashboard/login?redirectTo=' + path)`. This also covers form actions and `+server.ts`.
 - Loads may return `{ recruiter: { expiresAt } }` — **never the token**.
 - `handleFetch`: add `Authorization: Bearer <token>` only when the request URL starts with `API_BASE_URL`.
-- `handleError`: log status + route id, redact tokens/query strings, return `{ message: 'Something went wrong' }`.
+- `handleError`: for unknown errors only, log method + route id + the redacted error and return `{ message: 'Something went wrong' }`. Errors thrown with `error()` and framework errors keep their own message: Kit 3 passes them to this hook too, and the friendly 404/410 text depends on it.
 - Go 401 in any load/action → clear cookie → `redirect(303, '/dashboard/login?redirectTo=…')`.
 - `logout` action: delete cookie → redirect `/dashboard/login`.
 

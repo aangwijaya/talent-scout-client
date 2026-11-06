@@ -1,0 +1,96 @@
+import { isRedirect, type RequestEvent } from '@sveltejs/kit';
+import { describe, expect, it } from 'vitest';
+import { isRecruiterRoute, normalizeRefererPath, requireRecruiter } from './guards';
+
+describe('normalizeRefererPath', () => {
+	it.each([
+		['/dashboard/jobs', '/dashboard/jobs'],
+		['/dashboard/jobs?status=review#top', '/dashboard/jobs?status=review#top'],
+		['/dashboard/a/../jobs', '/dashboard/jobs'],
+		['/%2F/evil.example', '/%2F/evil.example']
+	])('keeps the relative path %s', (input, expected) => {
+		expect(normalizeRefererPath(input)).toBe(expected);
+	});
+
+	it.each([
+		[null],
+		[undefined],
+		[''],
+		['dashboard/jobs'],
+		['https://evil.example/'],
+		['javascript:alert(1)'],
+		['//evil.example'],
+		['/\\evil.example'],
+		['\\\\evil.example'],
+		['/\t/evil.example'],
+		['/\n/evil.example'],
+		[' //evil.example'],
+		['/..//evil.example'],
+		['/.//evil.example'],
+		['//[']
+	])('rejects %j', (input) => {
+		expect(normalizeRefererPath(input)).toBeNull();
+	});
+});
+
+describe('isRecruiterRoute', () => {
+	const check = (id: string | null, path: string) =>
+		isRecruiterRoute({
+			route: { id } as RequestEvent['route'],
+			url: new URL(path, 'http://app.test')
+		});
+
+	it.each([
+		['/dashboard', '/dashboard'],
+		['/dashboard/logout', '/dashboard/logout'],
+		['/dashboard/(recruiter)/jobs', '/dashboard/jobs'],
+		['/dashboard/(recruiter)/runs/[runId]/sse-token', '/dashboard/runs/1/sse-token'],
+		['/dashboard/(recruiter)/jobs', '/%64ashboard/jobs'],
+		[null, '/dashboard/unknown']
+	])('guards route %s at %s', (id, path) => {
+		expect(check(id, path)).toBe(true);
+	});
+
+	it.each([
+		['/dashboard/login', '/dashboard/login'],
+		['/', '/'],
+		['/apply/[jobId]', '/apply/1'],
+		['/s/[token]', '/s/dashboard'],
+		[null, '/dashboards'],
+		[null, '/unknown']
+	])('leaves route %s at %s open', (id, path) => {
+		expect(check(id, path)).toBe(false);
+	});
+});
+
+describe('requireRecruiter', () => {
+	const location = (path: string): string => {
+		try {
+			requireRecruiter({
+				locals: { recruiter: null },
+				url: new URL(path, 'http://app.test')
+			});
+		} catch (error) {
+			if (isRedirect(error) && error.status === 303) return error.location;
+			throw error;
+		}
+		return expect.unreachable('expected a redirect');
+	};
+
+	it('returns the session when there is one', () => {
+		const recruiter = { token: 't', expiresAt: 1 };
+		expect(requireRecruiter({ locals: { recruiter }, url: new URL('http://app.test/') })).toBe(
+			recruiter
+		);
+	});
+
+	it('redirects to login and keeps the path and query', () => {
+		expect(location('/dashboard/jobs?status=review')).toBe(
+			'/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%3Fstatus%3Dreview'
+		);
+	});
+
+	it('drops a path that is unsafe to redirect to', () => {
+		expect(location('http://app.test//evil.example')).toBe('/dashboard/login');
+	});
+});
