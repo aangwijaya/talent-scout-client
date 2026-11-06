@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-06 — #2 A server contract change turns every client PR red
+- **Context:** PR #19 only touched UI, yet its `contract-sync` job failed
+- **Problem:** the job compares `docs/` with the server's `main`, so an unrelated PR fails as soon as the server merges a contract change
+- **Cause:** the server merged a contract change (`talent-scout-server#22`) and the client copy had not been synced yet
+- **Lesson:** when `contract-sync` fails on a PR that does not touch the contract docs, sync them in a separate PR, merge it, then merge `main` into the open branch; never add the `contract-change` label to skip the job
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-06 — #2 Playwright browsers do not launch on this WSL setup
 - **Context:** rendering the base components in a real browser to check them
 - **Problem:** `chromium.launch()` fails: the headless shell is not installed, and the full Chromium cannot load `libnspr4`/`libnss3`
