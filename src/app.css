@@ -1,1 +1,59 @@
 @import 'tailwindcss';
+
+@theme {
+	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	--color-canvas: #fcfcfc;
+	--color-wash: #f0f4fe;
+	--color-card: #ffffff;
+	--color-subtle: #f1f5f9;
+	--color-line: #e2e8f0;
+	--color-ink: #020520;
+	--color-body: #14141e;
+	--color-muted: #374151;
+	--color-helper: #6b7280;
+	--color-brand: #145aff;
+	--color-brand-soft: #3b82f6;
+	--color-focus: #0099ff;
+	--color-success: #16ca2e;
+	--color-danger: #f26052;
+	--color-warning: #ffa64d;
+	--color-success-text: #15803d;
+	--color-danger-text: #b91c1c;
+	--color-warning-text: #b45309;
+
+	--text-caption: 12px;
+	--text-caption--line-height: 1.5;
+	--text-body-sm: 14px;
+	--text-body-sm--line-height: 1.43;
+	--text-base: 16px;
+	--text-base--line-height: 1.63;
+	--text-subheading: 20px;
+	--text-subheading--line-height: 1.4;
+	--text-subheading--letter-spacing: -0.16px;
+	--text-heading-sm: 22px;
+	--text-heading-sm--line-height: 1.4;
+	--text-heading-sm--letter-spacing: -0.2px;
+	--text-heading: 40px;
+	--text-heading--line-height: 1.05;
+	--text-heading--letter-spacing: -1.48px;
+
+	--radius-card: 8px;
+	--radius-input: 12px;
+	--radius-panel: 16px;
+
+	--shadow-card: rgba(0, 0, 0, 0.1) 0px 0px 4px -2px;
+	--shadow-card-strong: rgba(0, 0, 0, 0.25) 0px 0px 4px -2px;
+	--shadow-brand-sm: rgba(20, 90, 255, 0.3) 0px 0px 4px -2px;
+	--shadow-glow: rgba(20, 90, 255, 0.1) 0px 0px 50px -28px, rgba(0, 0, 0, 0.18) 0px 0px 3px -1px;
+	--shadow-panel:
+		rgba(0, 0, 0, 0.082) 0px 0.36px 1.8px -1.4px, rgba(0, 0, 0, 0.07) 0px 1.37px 6.87px -2.8px,
+		rgba(0, 0, 0, 0.016) 0px 6px 30px -4.25px;
+}
+
+@layer base {
+	body {
+		@apply bg-canvas text-body-sm text-body;
+	}
+}

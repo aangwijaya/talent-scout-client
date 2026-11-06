@@ -23,6 +23,22 @@ Rules:
 
 ## Entries
 
+### 2026-11-06 — #2 A server contract change turns every client PR red
+- **Context:** PR #19 only touched UI, yet its `contract-sync` job failed
+- **Problem:** the job compares `docs/` with the server's `main`, so an unrelated PR fails as soon as the server merges a contract change
+- **Cause:** the server merged a contract change (`talent-scout-server#22`) and the client copy had not been synced yet
+- **Lesson:** when `contract-sync` fails on a PR that does not touch the contract docs, sync them in a separate PR, merge it, then merge `main` into the open branch; never add the `contract-change` label to skip the job
+- **Follow-up:** none
+- **Repeated?:** first time
+
+### 2026-11-06 — #2 Playwright browsers do not launch on this WSL setup
+- **Context:** rendering the base components in a real browser to check them
+- **Problem:** `chromium.launch()` fails: the headless shell is not installed, and the full Chromium cannot load `libnspr4`/`libnss3`
+- **Cause:** `playwright install` was run without its system dependencies, which need root
+- **Lesson:** before relying on `pnpm test:e2e` locally (client #9), run `pnpm exec playwright install --with-deps chromium`; without root, `apt-get download` + `dpkg-deb -x` into a temp dir + `LD_LIBRARY_PATH` + `channel: 'chromium'` is enough for one-off checks
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-06 — #1 SvelteKit 3 removed `$lib`
 - **Context:** scaffolding the app with the latest SvelteKit (3.1.1)
 - **Problem:** any `$lib` import fails the build with `module_removed_lib`, while `CLAUDE.md`, `docs/SERVER-SIDE.md`, skills and issues all use `$lib`
