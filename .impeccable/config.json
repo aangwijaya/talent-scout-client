@@ -1,0 +1,8 @@
+{
+  "telemetry": false,
+  "detector": {
+    "ignoreValues": [
+      { "rule": "overused-font", "value": "Inter", "reason": "Brand font (DESIGN.md)" }
+    ]
+  }
+}

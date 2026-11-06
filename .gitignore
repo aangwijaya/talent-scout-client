@@ -1,0 +1,26 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# deps & build
+node_modules/
+.pnpm-store/
+/build/
+.svelte-kit/
+.vercel/
+vite.config.ts.timestamp-*
+
+# tests
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# tooling / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+*.log
