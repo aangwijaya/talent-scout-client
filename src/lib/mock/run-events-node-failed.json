@@ -1,0 +1,543 @@
+[
+	{
+		"event": "run.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 1,
+		"ts": "2026-11-04T06:30:02Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"session_id": "6f1c2a54-8d3e-4b7a-9c21-0a5e7d3b1f10",
+			"nodes": [
+				{
+					"id": "planner",
+					"type": "splitter"
+				},
+				{
+					"id": "plan_check",
+					"type": "code"
+				},
+				{
+					"id": "interviewer",
+					"type": "worker"
+				},
+				{
+					"id": "judge",
+					"type": "gate"
+				},
+				{
+					"id": "guard",
+					"type": "code"
+				},
+				{
+					"id": "scorer",
+					"type": "worker"
+				},
+				{
+					"id": "evidence_check",
+					"type": "code"
+				},
+				{
+					"id": "recruiter_gate",
+					"type": "human_gate"
+				}
+			],
+			"edges": [
+				{
+					"from": "planner",
+					"to": "plan_check"
+				},
+				{
+					"from": "plan_check",
+					"to": "planner"
+				},
+				{
+					"from": "plan_check",
+					"to": "interviewer"
+				},
+				{
+					"from": "interviewer",
+					"to": "judge"
+				},
+				{
+					"from": "judge",
+					"to": "guard"
+				},
+				{
+					"from": "guard",
+					"to": "interviewer"
+				},
+				{
+					"from": "guard",
+					"to": "scorer"
+				},
+				{
+					"from": "scorer",
+					"to": "evidence_check"
+				},
+				{
+					"from": "evidence_check",
+					"to": "scorer"
+				},
+				{
+					"from": "evidence_check",
+					"to": "recruiter_gate"
+				}
+			]
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 2,
+		"ts": "2026-11-04T06:30:04Z",
+		"node_id": "planner",
+		"attempt": 1,
+		"data": {
+			"model": "deepseek/deepseek-v4.1-flash",
+			"input_summary": "job description, rubric and CV"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 3,
+		"ts": "2026-11-04T06:30:06Z",
+		"node_id": "planner",
+		"attempt": 1,
+		"data": {
+			"output_summary": "topics=1",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 4,
+		"ts": "2026-11-04T06:30:08Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "planner",
+			"to": "plan_check",
+			"label": "planned"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 5,
+		"ts": "2026-11-04T06:30:10Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"model": null,
+			"input_summary": "planner output"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 6,
+		"ts": "2026-11-04T06:30:12Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"output_summary": "valid",
+			"tokens_in": 0,
+			"tokens_out": 0,
+			"duration_ms": 12,
+			"cost_usd": 0
+		}
+	},
+	{
+		"event": "check.passed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 7,
+		"ts": "2026-11-04T06:30:14Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"check": "plan_shape",
+			"details": {}
+		}
+	},
+	{
+		"event": "topic.changed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 8,
+		"ts": "2026-11-04T06:30:16Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"topic_id": "2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20",
+			"position": 1,
+			"title": "State management",
+			"status": "active"
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 9,
+		"ts": "2026-11-04T06:30:18Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "plan_check",
+			"to": "interviewer",
+			"label": "valid"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 10,
+		"ts": "2026-11-04T06:30:20Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"model": "z-ai/glm-5.3-flash",
+			"input_summary": "topic 1: State management"
+		}
+	},
+	{
+		"event": "message.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 11,
+		"ts": "2026-11-04T06:30:24Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"message": {
+				"id": "a1000000-0000-4000-8000-000000000001",
+				"role": "assistant",
+				"kind": "opening",
+				"topic_id": "2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20",
+				"content": "Hi Rani, how did you manage shared state in your last Svelte project?",
+				"created_at": "2026-11-04T06:30:22Z"
+			}
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 12,
+		"ts": "2026-11-04T06:30:26Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"output_summary": "asked opening",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "message.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 13,
+		"ts": "2026-11-04T06:30:30Z",
+		"node_id": "interviewer",
+		"attempt": null,
+		"data": {
+			"message": {
+				"id": "a1000000-0000-4000-8000-000000000002",
+				"role": "applicant",
+				"kind": "answer",
+				"topic_id": "2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20",
+				"content": "I moved the state into a separate store so each page stayed small and easy to test.",
+				"created_at": "2026-11-04T06:30:28Z"
+			}
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 14,
+		"ts": "2026-11-04T06:30:32Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "interviewer",
+			"to": "judge",
+			"label": "answer"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 15,
+		"ts": "2026-11-04T06:30:34Z",
+		"node_id": "judge",
+		"attempt": 1,
+		"data": {
+			"model": "z-ai/glm-5.3-flash",
+			"input_summary": "topic 1: last answer"
+		}
+	},
+	{
+		"event": "node.failed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 16,
+		"ts": "2026-11-04T06:30:36Z",
+		"node_id": "judge",
+		"attempt": 1,
+		"data": {
+			"error": "timeout",
+			"will_retry": true
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 17,
+		"ts": "2026-11-04T06:30:38Z",
+		"node_id": "judge",
+		"attempt": 2,
+		"data": {
+			"model": "z-ai/glm-5.3-flash",
+			"input_summary": "topic 1: last answer"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 18,
+		"ts": "2026-11-04T06:30:40Z",
+		"node_id": "judge",
+		"attempt": 2,
+		"data": {
+			"output_summary": "verdict=follow_up",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 19,
+		"ts": "2026-11-04T06:30:42Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "judge",
+			"to": "guard",
+			"label": "verdict"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 20,
+		"ts": "2026-11-04T06:30:44Z",
+		"node_id": "guard",
+		"attempt": 1,
+		"data": {
+			"model": null,
+			"input_summary": "verdict and limits"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 21,
+		"ts": "2026-11-04T06:30:46Z",
+		"node_id": "guard",
+		"attempt": 1,
+		"data": {
+			"output_summary": "action=follow_up",
+			"tokens_in": 0,
+			"tokens_out": 0,
+			"duration_ms": 12,
+			"cost_usd": 0
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 22,
+		"ts": "2026-11-04T06:30:48Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "guard",
+			"to": "interviewer",
+			"label": "follow_up"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 23,
+		"ts": "2026-11-04T06:30:50Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"model": "z-ai/glm-5.3-flash",
+			"input_summary": "topic 1: State management"
+		}
+	},
+	{
+		"event": "message.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 24,
+		"ts": "2026-11-04T06:30:54Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"message": {
+				"id": "a1000000-0000-4000-8000-000000000003",
+				"role": "assistant",
+				"kind": "follow_up",
+				"topic_id": "2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20",
+				"content": "What made you choose a store over passing props?",
+				"created_at": "2026-11-04T06:30:52Z"
+			}
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 25,
+		"ts": "2026-11-04T06:30:56Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"output_summary": "asked follow_up",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "message.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 26,
+		"ts": "2026-11-04T06:31:00Z",
+		"node_id": "interviewer",
+		"attempt": null,
+		"data": {
+			"message": {
+				"id": "a1000000-0000-4000-8000-000000000004",
+				"role": "applicant",
+				"kind": "answer",
+				"topic_id": "2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20",
+				"content": "Props were crossing four layers, and I explained the tradeoff to the team before we changed it.",
+				"created_at": "2026-11-04T06:30:58Z"
+			}
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 27,
+		"ts": "2026-11-04T06:31:02Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "interviewer",
+			"to": "judge",
+			"label": "answer"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 28,
+		"ts": "2026-11-04T06:31:04Z",
+		"node_id": "judge",
+		"attempt": 1,
+		"data": {
+			"model": "z-ai/glm-5.3-flash",
+			"input_summary": "topic 1: last answer"
+		}
+	},
+	{
+		"event": "node.failed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 29,
+		"ts": "2026-11-04T06:31:06Z",
+		"node_id": "judge",
+		"attempt": 1,
+		"data": {
+			"error": "timeout",
+			"will_retry": true
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 30,
+		"ts": "2026-11-04T06:31:08Z",
+		"node_id": "judge",
+		"attempt": 2,
+		"data": {
+			"model": "z-ai/glm-5.3-flash",
+			"input_summary": "topic 1: last answer"
+		}
+	},
+	{
+		"event": "node.failed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 31,
+		"ts": "2026-11-04T06:31:10Z",
+		"node_id": "judge",
+		"attempt": 2,
+		"data": {
+			"error": "timeout",
+			"will_retry": false
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 32,
+		"ts": "2026-11-04T06:31:12Z",
+		"node_id": "guard",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 33,
+		"ts": "2026-11-04T06:31:14Z",
+		"node_id": "scorer",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "node.skipped",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 34,
+		"ts": "2026-11-04T06:31:16Z",
+		"node_id": "evidence_check",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "run.failed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 35,
+		"ts": "2026-11-04T06:31:18Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"error": "judge_unavailable"
+		}
+	}
+]

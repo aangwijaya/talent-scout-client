@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-06 — #3 SvelteKit 3 replaced `$env/dynamic/private`
+- **Context:** reading `API_BASE_URL` and `USE_MOCK` in the server API layer
+- **Problem:** `svelte-check` reports "Cannot find module `$env/dynamic/private`", while `CLAUDE.md`, `docs/SERVER-SIDE.md` and the issues all name it
+- **Cause:** Kit 3 deprecated `$env/*`; variables are declared with `defineEnvVars` in `src/env.ts` and imported by name from `$app/env/private`
+- **Lesson:** add a new env var to `src/env.ts` first, then `import { NAME } from '$app/env/private'`; check issue text that names framework modules against the installed major
+- **Follow-up:** pending `skill-update` PR (the `thermo-nuclear-review` checklist still names `$env/dynamic/private`)
+- **Repeated?:** same root cause as 2026-11-06 #1 (docs written against SvelteKit 2)
+
 ### 2026-11-06 — #2 A server contract change turns every client PR red
 - **Context:** PR #19 only touched UI, yet its `contract-sync` job failed
 - **Problem:** the job compares `docs/` with the server's `main`, so an unrelated PR fails as soon as the server merges a contract change

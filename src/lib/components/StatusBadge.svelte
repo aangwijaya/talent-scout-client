@@ -5,17 +5,8 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import X from '@lucide/svelte/icons/x';
+	import type { ApplicationStatus, NodeStatus } from '$lib/server/api/types';
 
-	type ApplicationStatus =
-		| 'applied'
-		| 'invited'
-		| 'in_session'
-		| 'scoring'
-		| 'review'
-		| 'shortlisted'
-		| 'rejected'
-		| 'failed';
-	type NodeStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
 	type Status = ApplicationStatus | NodeStatus | 'retry' | 'needs_manual';
 
 	type Props = {

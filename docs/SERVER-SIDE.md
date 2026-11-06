@@ -31,7 +31,7 @@
 - `requireAuth(event)` guard, redirecting 303 to the login page with `?referer=` (we call it `?redirectTo=`), sanitised by `normalizeRefererPath` (prevents open redirects). The reference runs it in `+layout.server.ts`; we run it in `handle` (see lesson 5 below).
 - Cookie manager: `httpOnly`, `secure` in production, `sameSite: 'lax'`, `path: '/'`.
 - Form actions: `request.formData()` → zod `safeParse` → `fail(400, { errors: z.flattenError(...) })`.
-- Typed API client + endpoint map, called with `event.fetch`; private env via `$env/dynamic/private`.
+- Typed API client + endpoint map, called with `event.fetch`; private env via `$app/env/private`.
 - Upload action: rebuild `FormData` on the server and forward to the API with server-held credentials.
 - Logout as a server-side action/load that clears the session.
 - Unit tests per auth module (hook, guards, cookies, redirects).
@@ -93,9 +93,9 @@ src/
 
 | Name | Scope | Purpose |
 |---|---|---|
-| `API_BASE_URL` | `$env/dynamic/private` | Go API base URL (server only) |
-| `USE_MOCK` | `$env/dynamic/private` | `true` → mock implementation |
-| `BFF_SHARED_SECRET` | `$env/dynamic/private` | Sent as `X-BFF-Secret` with the forwarded applicant IP; same value as on the Go server |
+| `API_BASE_URL` | `$app/env/private` | Go API base URL (server only) |
+| `USE_MOCK` | `$app/env/private` | `true` → mock implementation |
+| `BFF_SHARED_SECRET` | `$app/env/private` | Sent as `X-BFF-Secret` with the forwarded applicant IP; same value as on the Go server |
 
 `PUBLIC_API_BASE_URL` and `PUBLIC_USE_MOCK` are removed. The SSE base URL is returned from the server load (it's not secret, just not a `PUBLIC_*` build constant).
 

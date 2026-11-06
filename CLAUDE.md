@@ -98,7 +98,7 @@ talent-scout-client/
 
 ## Rules
 1. **Follow the contract.** Don't guess fields. Don't edit `docs/API.md`/`docs/EVENTS.md`/`docs/PRD.md` in this repo: the source of truth is the server. Need a change → open a `contract-change` issue in `aangwijaya/talent-scout-server`, wait for approval & merge, then copy the file here byte-identical.
-2. No secrets in the browser. Env is private server-side only (`API_BASE_URL`, `USE_MOCK`, `BFF_SHARED_SECRET` via `$env/dynamic/private`); no `PUBLIC_*` vars. No Supabase keys/URLs. `.env` is in `.gitignore`.
+2. No secrets in the browser. Env is private server-side only (`API_BASE_URL`, `USE_MOCK`, `BFF_SHARED_SECRET` via `$app/env/private`, declared in `src/env.ts`); no `PUBLIC_*` vars. No Supabase keys/URLs. `.env` is in `.gitignore`.
 3. Recruiter token only in the httpOnly `ts_session` cookie (`secure` in prod, `sameSite: 'lax'`); never in `localStorage`/`sessionStorage`, page data, URLs (except the 60 s `sse_token`), or logs. `handleError` redacts tokens and query strings.
 4. Never show scores/assessments to the applicant.
 5. Out of scope: applicant accounts, multi-tenant, full i18n, dark mode. Post-MVP (don't build): job create/edit pages, a Playwright suite beyond 1 smoke test.

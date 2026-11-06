@@ -1,0 +1,240 @@
+[
+	{
+		"event": "run.started",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 1,
+		"ts": "2026-11-04T06:30:02Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"session_id": "6f1c2a54-8d3e-4b7a-9c21-0a5e7d3b1f10",
+			"nodes": [
+				{
+					"id": "planner",
+					"type": "splitter"
+				},
+				{
+					"id": "plan_check",
+					"type": "code"
+				},
+				{
+					"id": "interviewer",
+					"type": "worker"
+				},
+				{
+					"id": "judge",
+					"type": "gate"
+				},
+				{
+					"id": "guard",
+					"type": "code"
+				},
+				{
+					"id": "scorer",
+					"type": "worker"
+				},
+				{
+					"id": "evidence_check",
+					"type": "code"
+				},
+				{
+					"id": "recruiter_gate",
+					"type": "human_gate"
+				}
+			],
+			"edges": [
+				{
+					"from": "planner",
+					"to": "plan_check"
+				},
+				{
+					"from": "plan_check",
+					"to": "planner"
+				},
+				{
+					"from": "plan_check",
+					"to": "interviewer"
+				},
+				{
+					"from": "interviewer",
+					"to": "judge"
+				},
+				{
+					"from": "judge",
+					"to": "guard"
+				},
+				{
+					"from": "guard",
+					"to": "interviewer"
+				},
+				{
+					"from": "guard",
+					"to": "scorer"
+				},
+				{
+					"from": "scorer",
+					"to": "evidence_check"
+				},
+				{
+					"from": "evidence_check",
+					"to": "scorer"
+				},
+				{
+					"from": "evidence_check",
+					"to": "recruiter_gate"
+				}
+			]
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 2,
+		"ts": "2026-11-04T06:30:04Z",
+		"node_id": "planner",
+		"attempt": 1,
+		"data": {
+			"model": "deepseek/deepseek-v4.1-flash",
+			"input_summary": "job description, rubric and CV"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 3,
+		"ts": "2026-11-04T06:30:06Z",
+		"node_id": "planner",
+		"attempt": 1,
+		"data": {
+			"output_summary": "topics=1",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 4,
+		"ts": "2026-11-04T06:30:08Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "planner",
+			"to": "plan_check",
+			"label": "planned"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 5,
+		"ts": "2026-11-04T06:30:10Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"model": null,
+			"input_summary": "planner output"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 6,
+		"ts": "2026-11-04T06:30:12Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"output_summary": "valid",
+			"tokens_in": 0,
+			"tokens_out": 0,
+			"duration_ms": 12,
+			"cost_usd": 0
+		}
+	},
+	{
+		"event": "check.passed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 7,
+		"ts": "2026-11-04T06:30:14Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"check": "plan_shape",
+			"details": {}
+		}
+	},
+	{
+		"event": "topic.changed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 8,
+		"ts": "2026-11-04T06:30:16Z",
+		"node_id": "plan_check",
+		"attempt": 1,
+		"data": {
+			"topic_id": "2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20",
+			"position": 1,
+			"title": "State management",
+			"status": "active"
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 9,
+		"ts": "2026-11-04T06:30:18Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "plan_check",
+			"to": "interviewer",
+			"label": "valid"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 10,
+		"ts": "2026-11-04T06:30:20Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"model": "z-ai/glm-5.3-flash",
+			"input_summary": "topic 1: State management"
+		}
+	},
+	{
+		"event": "message.completed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 11,
+		"ts": "2026-11-04T06:30:24Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"message": {
+				"id": "a1000000-0000-4000-8000-000000000001",
+				"role": "assistant",
+				"kind": "opening",
+				"topic_id": "2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20",
+				"content": "Hi Rani, how did you manage shared state in your last Svelte project?",
+				"created_at": "2026-11-04T06:30:22Z"
+			}
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "2c4e6a8b-5d7f-4b9a-a1c3-7e9b1d3f5a60",
+		"seq": 12,
+		"ts": "2026-11-04T06:30:26Z",
+		"node_id": "interviewer",
+		"attempt": 1,
+		"data": {
+			"output_summary": "asked opening",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	}
+]
