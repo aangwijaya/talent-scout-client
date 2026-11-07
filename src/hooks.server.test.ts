@@ -2,7 +2,10 @@ import { isRedirect, type RequestEvent } from '@sveltejs/kit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handle, handleError, handleFetch } from './hooks.server';
 
-vi.mock('$app/env/private', () => ({ API_BASE_URL: 'http://api.test:8080' }));
+vi.mock('$app/env/private', () => ({
+	API_BASE_URL: 'http://api.test:8080',
+	BFF_SHARED_SECRET: 'bff-secret-value'
+}));
 
 const FUTURE = Date.now() + 60_000;
 const API = 'http://api.test:8080/api/v1';
@@ -74,6 +77,12 @@ describe('handleFetch', () => {
 		await handleFetch({ event: event as unknown as RequestEvent, request, fetch });
 		return fetch.mock.calls[0][0] as Request;
 	}
+
+	it('adds neither the client address nor the BFF secret to requests outside the API', async () => {
+		const request = await sent(new Request('http://api.test:9090/x'));
+		expect(request.headers.get('x-forwarded-for')).toBeNull();
+		expect(request.headers.get('x-bff-secret')).toBeNull();
+	});
 
 	it('adds the Bearer token for API requests', async () => {
 		const request = await sent(new Request(`${API}/jobs`));
@@ -167,6 +176,11 @@ describe('handleError', () => {
 		for (const secret of ['session-value', 'abc', 'def', 'ghi', 'jkl']) {
 			expect(line).not.toContain(secret);
 		}
+	});
+
+	it('redacts the bare BFF secret value from the log', () => {
+		const { line } = logged(new Error('upstream echoed bff-secret-value'), fakeEvent());
+		expect(line).not.toContain('bff-secret-value');
 	});
 
 	it('copes with thrown values that are not errors, and with no session on locals yet', () => {

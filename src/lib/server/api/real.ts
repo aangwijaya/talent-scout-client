@@ -1,5 +1,6 @@
-import { API_BASE_URL } from '$app/env/private';
+import { API_BASE_URL, BFF_SHARED_SECRET } from '$app/env/private';
 import { getRequestEvent } from '$app/server';
+import { setClientIpHeaders } from '../client-ip';
 import { redirectToLogin } from '../guards';
 import { clearSessionCookie } from '../session';
 import { API_ERROR_CODES, ApiError, type ApiErrorCode, type TalentScoutApi } from './types';
@@ -32,9 +33,11 @@ function apiUrl(path: string): string {
 async function send(path: string, init?: RequestInit, redirectOn401 = true): Promise<Response> {
 	const event = getRequestEvent();
 	const url = apiUrl(path);
+	const headers = new Headers(init?.headers);
+	setClientIpHeaders(headers, event, BFF_SHARED_SECRET);
 	let res: Response;
 	try {
-		res = await event.fetch(url, init);
+		res = await event.fetch(url, { ...init, headers });
 	} catch {
 		throw new ApiError(502, 'internal_error', 'The API could not be reached');
 	}

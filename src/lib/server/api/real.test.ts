@@ -6,11 +6,15 @@ import { ApiError } from './types';
 const event = vi.hoisted(() => ({
 	fetch: vi.fn<typeof fetch>(),
 	cookies: { delete: vi.fn() },
+	getClientAddress: () => '203.0.113.7',
 	url: new URL('http://app.test/dashboard/jobs?status=review')
 }));
 
 vi.mock('$app/server', () => ({ getRequestEvent: () => event }));
-vi.mock('$app/env/private', () => ({ API_BASE_URL: 'http://api.test' }));
+vi.mock('$app/env/private', () => ({
+	API_BASE_URL: 'http://api.test',
+	BFF_SHARED_SECRET: 'bff-secret-value'
+}));
 
 function json(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status });
@@ -32,7 +36,20 @@ describe('realApi', () => {
 	it('calls the versioned base URL through the request fetch and encodes path segments', async () => {
 		event.fetch.mockResolvedValue(json(200, { status: 'invited' }));
 		await realApi.getSession('a/b');
-		expect(event.fetch).toHaveBeenCalledWith('http://api.test/api/v1/sessions/a%2Fb', undefined);
+		expect(event.fetch.mock.calls[0][0]).toBe('http://api.test/api/v1/sessions/a%2Fb');
+	});
+
+	it('forwards the client address and the BFF secret on every API request', async () => {
+		event.fetch.mockImplementation(async () => json(200, {}));
+		await realApi.getPublicJob('j');
+		await realApi.apply('j', new FormData());
+		await realApi.sendMessage('t', 'hello');
+		expect(event.fetch).toHaveBeenCalledTimes(3);
+		for (const [, init] of event.fetch.mock.calls) {
+			const headers = new Headers(init?.headers);
+			expect(headers.get('x-forwarded-for')).toBe('203.0.113.7');
+			expect(headers.get('x-bff-secret')).toBe('bff-secret-value');
+		}
 	});
 
 	it('sends JSON bodies and the status filter', async () => {
@@ -54,7 +71,7 @@ describe('realApi', () => {
 		await realApi.apply('j', form);
 		const [, init] = event.fetch.mock.calls[0];
 		expect(init?.body).toBe(form);
-		expect(init?.headers).toBeUndefined();
+		expect(new Headers(init?.headers).get('content-type')).toBeNull();
 	});
 
 	it('parses the contract error format', async () => {

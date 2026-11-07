@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '$app/env/private';
+import { API_BASE_URL, BFF_SHARED_SECRET } from '$app/env/private';
 import type { Handle, HandleFetch, HandleServerError } from '@sveltejs/kit/hooks';
 import { isRecruiterRoute, requireRecruiter } from '$lib/server/guards';
 import { redact } from '$lib/server/redact';
@@ -33,9 +33,12 @@ export const handleError: HandleServerError = ({ kind, error, event }) => {
 	if (kind !== 'unknown') return;
 
 	const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
-	const token = event.locals.recruiter?.token;
+	// Header-name patterns miss a bare secret value, so pass the values themselves.
+	const secrets = [event.locals.recruiter?.token, BFF_SHARED_SECRET].filter(
+		(secret): secret is string => Boolean(secret)
+	);
 	console.error(
-		`${event.request.method} ${event.route.id ?? '(no route)'}: ${redact(detail, token ? [token] : [])}`
+		`${event.request.method} ${event.route.id ?? '(no route)'}: ${redact(detail, secrets)}`
 	);
 	return { message: 'Something went wrong' };
 };
