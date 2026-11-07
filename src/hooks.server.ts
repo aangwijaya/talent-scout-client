@@ -1,6 +1,5 @@
 import { API_BASE_URL, BFF_SHARED_SECRET } from '$app/env/private';
 import type { Handle, HandleFetch, HandleServerError } from '@sveltejs/kit/hooks';
-import { setClientIpHeaders } from '$lib/server/client-ip';
 import { isRecruiterRoute, requireRecruiter } from '$lib/server/guards';
 import { redact } from '$lib/server/redact';
 import { readSession } from '$lib/server/session';
@@ -23,7 +22,6 @@ export const handleFetch: HandleFetch = ({ event, request, fetch }) => {
 	headers.delete('authorization');
 	const token = event.locals.recruiter?.token;
 	if (token) headers.set('authorization', `Bearer ${token}`);
-	setClientIpHeaders(headers, event, BFF_SHARED_SECRET);
 
 	// Deleting the header is not enough: unless credentials are omitted, Kit adds the browser's
 	// cookies back when the API shares the app's hostname, as it does on localhost in dev.

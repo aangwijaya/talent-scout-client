@@ -2,10 +2,7 @@ import { isRedirect, type RequestEvent } from '@sveltejs/kit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handle, handleError, handleFetch } from './hooks.server';
 
-vi.mock('$app/env/private', () => ({
-	API_BASE_URL: 'http://api.test:8080',
-	BFF_SHARED_SECRET: 'bff-secret-value'
-}));
+vi.mock('$app/env/private', () => ({ API_BASE_URL: 'http://api.test:8080' }));
 
 const FUTURE = Date.now() + 60_000;
 const API = 'http://api.test:8080/api/v1';
@@ -73,10 +70,7 @@ describe('handle', () => {
 describe('handleFetch', () => {
 	async function sent(request: Request, token: string | null = 'tok') {
 		const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response('ok'));
-		const event = {
-			locals: { recruiter: token ? { token, expiresAt: FUTURE } : null },
-			getClientAddress: () => '203.0.113.7'
-		};
+		const event = { locals: { recruiter: token ? { token, expiresAt: FUTURE } : null } };
 		await handleFetch({ event: event as unknown as RequestEvent, request, fetch });
 		return fetch.mock.calls[0][0] as Request;
 	}
@@ -115,27 +109,6 @@ describe('handleFetch', () => {
 	])('never sends the token to %s', async (_name, url) => {
 		const request = await sent(new Request(url));
 		expect(request.headers.get('authorization')).toBeNull();
-	});
-
-	it('forwards the client address and the BFF secret to the API, replacing browser values', async () => {
-		const request = await sent(
-			new Request(`${API}/jobs/1/applications`, {
-				method: 'POST',
-				headers: { 'x-forwarded-for': '6.6.6.6', 'x-bff-secret': 'forged' }
-			}),
-			null
-		);
-		expect(request.headers.get('x-forwarded-for')).toBe('203.0.113.7');
-		expect(request.headers.get('x-bff-secret')).toBe('bff-secret-value');
-	});
-
-	it.each([
-		['another host', 'https://other.example/x'],
-		['another port', 'http://api.test:9090/x']
-	])('sends neither the client address nor the secret to %s', async (_name, url) => {
-		const request = await sent(new Request(url));
-		expect(request.headers.get('x-forwarded-for')).toBeNull();
-		expect(request.headers.get('x-bff-secret')).toBeNull();
 	});
 
 	it('keeps the method and a multipart body', async () => {
@@ -194,11 +167,6 @@ describe('handleError', () => {
 		for (const secret of ['session-value', 'abc', 'def', 'ghi', 'jkl']) {
 			expect(line).not.toContain(secret);
 		}
-	});
-
-	it('redacts the bare BFF secret value from the log', () => {
-		const { line } = logged(new Error('upstream echoed bff-secret-value'), fakeEvent());
-		expect(line).not.toContain('bff-secret-value');
 	});
 
 	it('copes with thrown values that are not errors, and with no session on locals yet', () => {
