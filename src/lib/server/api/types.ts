@@ -1,193 +1,56 @@
-// Hand-written from docs/API.md until openapi-typescript replaces the shapes in #10.
+// REST types come from `schema.d.ts`, generated from the pinned `openapi.yaml` by `pnpm gen:api`.
+// Only aliases live here: never hand-write a contract shape.
+import type { components, operations } from './schema';
 
-export type JobStatus = 'open' | 'closed';
-export type ApplicationStatus =
-	| 'applied'
-	| 'invited'
-	| 'in_session'
-	| 'scoring'
-	| 'review'
-	| 'shortlisted'
-	| 'rejected'
-	| 'failed';
-export type SessionStatus = 'invited' | 'active' | 'completed' | 'expired' | 'revoked';
-export type FinishReason = 'completed' | 'time_limit' | 'question_limit' | 'abandoned' | 'failed';
-export type ScoreStatus = 'valid' | 'needs_manual';
-export type TopicStatus = 'pending' | 'active' | 'done';
-export type RunStatus = 'running' | 'succeeded' | 'failed';
-export type NodeId =
-	| 'planner'
-	| 'plan_check'
-	| 'interviewer'
-	| 'judge'
-	| 'guard'
-	| 'scorer'
-	| 'evidence_check'
-	| 'recruiter_gate';
-export type NodeType = 'splitter' | 'worker' | 'gate' | 'code' | 'human_gate';
-export type NodeStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped';
-export type DecisionValue = 'shortlist' | 'reject';
-
-export interface List<T> {
-	items: T[];
-	next_cursor: string | null;
+type Schemas = components['schemas'];
+type Json<Op extends keyof operations> = operations[Op]['responses'] extends {
+	200: { content: { 'application/json': infer T } };
 }
+	? T
+	: never;
 
-export interface RubricCriterion {
-	key: string;
-	label: string;
-	description: string;
-	weight: number;
-}
+export type JobStatus = Schemas['JobStatus'];
+export type ApplicationStatus = Schemas['ApplicationStatus'];
+export type SessionStatus = Schemas['SessionStatus'];
+export type FinishReason = Schemas['FinishReason'];
+export type ScoreStatus = Schemas['Score']['status'];
+export type TopicStatus = Schemas['Topic']['status'];
+export type RunStatus = Schemas['GraphRun']['status'];
+export type NodeId = Schemas['GraphRunNode']['id'];
+export type NodeType = Schemas['GraphRunNode']['type'];
+export type NodeStatus = Schemas['GraphRunNode']['status'];
+export type DecisionValue = Schemas['Decision']['value'];
 
-export interface Job {
-	id: string;
-	title: string;
-	description: string;
-	rubric: RubricCriterion[];
-	status: JobStatus;
-	apply_url: string;
-	application_count: number;
-	created_at: string;
-	updated_at: string;
-}
+export type RubricCriterion = Schemas['RubricCriterion'];
+export type Job = Schemas['Job'];
+export type PublicJob = Schemas['PublicJob'];
+export type ApplicationSummary = Schemas['ApplicationSummary'];
+export type Message = Schemas['Message'];
+export type Topic = Schemas['Topic'];
+export type Evidence = Schemas['ScoreEvidence'];
+export type Score = Schemas['Score'];
+export type Decision = Schemas['Decision'];
+export type ApplicationDetail = Schemas['ApplicationDetail'];
+export type CurrentTopic = Schemas['CurrentTopic'];
+export type SessionInfo = Schemas['SessionDetail'];
+export type GraphRun = Schemas['GraphRun'];
+export type LoginResponse = Schemas['LoginResponse'];
+export type SseTokenResponse = Schemas['SSETokenResponse'];
+export type ApplyResponse = Schemas['ApplyResponse'];
+export type DecisionRequest = Schemas['DecisionRequest'];
+export type ResendInviteResponse = Schemas['ResendInviteResponse'];
+export type SendMessageResponse = Schemas['SendMessageResponse'];
+export type RetryResponse = Schemas['RetryResponse'];
 
-export type PublicJob = Pick<Job, 'id' | 'title' | 'description' | 'status'>;
+export type JobList = Json<'listJobs'>;
+export type ApplicationList = Json<'listApplications'>;
+export type MessageList = Json<'listMessages'>;
+export type ApplicationListQuery = Pick<
+	NonNullable<operations['listApplications']['parameters']['query']>,
+	'status'
+>;
 
-export interface ApplicationSummary {
-	id: string;
-	job_id: string;
-	name: string;
-	email: string;
-	status: ApplicationStatus;
-	session_status: SessionStatus | null;
-	overall_score: number | null;
-	created_at: string;
-}
-
-export interface Message {
-	id: string;
-	role: 'assistant' | 'applicant' | 'system';
-	kind: 'opening' | 'question' | 'follow_up' | 'answer' | 'closing';
-	topic_id: string | null;
-	content: string;
-	created_at: string;
-}
-
-export interface Topic {
-	id: string;
-	position: number;
-	title: string;
-	goal: string;
-	rubric_keys: string[];
-	status: TopicStatus;
-	follow_up_count: number;
-}
-
-export interface Evidence {
-	message_id: string;
-	quote: string;
-}
-
-export interface Score {
-	rubric_key: string;
-	score: number | null;
-	rationale: string;
-	status: ScoreStatus;
-	attempts: number;
-	evidence: Evidence[];
-}
-
-export interface Decision {
-	value: DecisionValue;
-	note: string;
-	decided_at: string;
-}
-
-export interface ApplicationDetail {
-	application: ApplicationSummary;
-	job: Pick<Job, 'id' | 'title' | 'rubric'>;
-	cv_text: string;
-	decision: Decision | null;
-	session: {
-		id: string;
-		status: SessionStatus;
-		expires_at: string;
-		started_at: string | null;
-		ended_at: string | null;
-		finish_reason: FinishReason | null;
-		question_count: number;
-	} | null;
-	graph_run: { id: string; status: RunStatus; cost_usd: number } | null;
-	topics: Topic[];
-	messages: Message[];
-	scores: Score[];
-}
-
-export interface CurrentTopic {
-	position: number;
-	title: string;
-	total: number;
-}
-
-export interface SessionInfo {
-	status: SessionStatus;
-	job_title: string;
-	applicant_name: string;
-	expires_at: string;
-	started_at: string | null;
-	deadline_at: string | null;
-	max_minutes: number;
-	topic_count: number | null;
-	question_count: number;
-	max_questions: number;
-	current_topic: CurrentTopic | null;
-}
-
-export interface GraphRun {
-	id: string;
-	session_id: string;
-	status: RunStatus;
-	nodes: {
-		id: NodeId;
-		type: NodeType;
-		status: NodeStatus;
-		attempts: number;
-		model: string | null;
-	}[];
-	edges: { from: NodeId; to: NodeId }[];
-	last_seq: number;
-	total_tokens_in: number;
-	total_tokens_out: number;
-	cost_usd: number;
-}
-
-export interface LoginResponse {
-	access_token: string;
-	expires_at: string;
-}
-
-export interface SseTokenResponse {
-	sse_token: string;
-	expires_at: string;
-}
-
-export interface ApplyResponse {
-	application_id: string;
-	status: ApplicationStatus;
-	message: string;
-}
-
-export interface ResendInviteResponse {
-	session_id: string;
-	expires_at: string;
-	invite_url: string | null;
-}
-
-export interface SendMessageResponse {
-	message: Message;
-	awaiting: 'assistant';
-}
+export type ApiErrorCode = Schemas['Error']['error']['code'];
 
 export const API_ERROR_CODES = [
 	'validation_failed',
@@ -205,9 +68,12 @@ export const API_ERROR_CODES = [
 	'internal_error',
 	'llm_unavailable',
 	'db_unavailable'
-] as const;
+] as const satisfies readonly ApiErrorCode[];
 
-export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
+// `satisfies` rejects codes the contract lacks; this rejects contract codes missing above.
+export type MissingErrorCodes = Exclude<ApiErrorCode, (typeof API_ERROR_CODES)[number]>;
+const noMissingErrorCodes: [MissingErrorCodes] extends [never] ? true : MissingErrorCodes = true;
+void noMissingErrorCodes;
 
 /** A contract error (`{ error: { code, message, details } }`) from the API or the mock. */
 export class ApiError extends Error {
@@ -231,30 +97,24 @@ export interface TalentScoutApi {
 	login(password: string): Promise<LoginResponse>;
 	mintSseToken(runId: string): Promise<SseTokenResponse>;
 
-	listJobs(): Promise<List<Job>>;
+	listJobs(): Promise<JobList>;
 	getJob(jobId: string): Promise<Job>;
 	getPublicJob(jobId: string): Promise<PublicJob>;
 
 	/** `form` carries the multipart fields `name`, `email` and `cv`. */
 	apply(jobId: string, form: FormData): Promise<ApplyResponse>;
-	listApplications(
-		jobId: string,
-		query?: { status?: ApplicationStatus }
-	): Promise<List<ApplicationSummary>>;
+	listApplications(jobId: string, query?: ApplicationListQuery): Promise<ApplicationList>;
 	getApplication(applicationId: string): Promise<ApplicationDetail>;
 	/** Resolves to the raw `application/pdf` response, for a `+server.ts` to stream. */
 	getCv(applicationId: string): Promise<Response>;
-	decide(
-		applicationId: string,
-		decision: { decision: DecisionValue; note?: string }
-	): Promise<ApplicationSummary>;
+	decide(applicationId: string, decision: DecisionRequest): Promise<ApplicationSummary>;
 	resendInvite(applicationId: string): Promise<ResendInviteResponse>;
 
 	getSession(token: string): Promise<SessionInfo>;
 	startSession(token: string): Promise<SessionInfo>;
-	listMessages(token: string): Promise<{ items: Message[] }>;
+	listMessages(token: string): Promise<MessageList>;
 	sendMessage(token: string, content: string): Promise<SendMessageResponse>;
-	retrySession(token: string): Promise<{ status: 'retrying' }>;
+	retrySession(token: string): Promise<RetryResponse>;
 
 	getGraphRun(runId: string): Promise<GraphRun>;
 

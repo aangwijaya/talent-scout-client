@@ -16,6 +16,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Fail when schema.d.ts is out of date with openapi.yaml
+        run: |
+          pnpm gen:api
+          git diff --exit-code -- src/lib/server/api/schema.d.ts || { echo "::error::Run pnpm gen:api and commit schema.d.ts"; exit 1; }
       - run: pnpm check
       - run: pnpm lint
       - run: pnpm test
