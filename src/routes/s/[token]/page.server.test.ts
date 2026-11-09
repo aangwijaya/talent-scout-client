@@ -121,6 +121,9 @@ describe('actions', () => {
 	it('retry maps 410 to a friendly failure', async () => {
 		api.retrySession.mockRejectedValue(new ApiError(410, 'session_expired', 'raw'));
 		const result = await act('retry', event(new FormData()));
-		expect(result).toMatchObject({ status: 410, data: { error: expect.stringMatching(/ended|expired/i) } });
+		expect(result).toMatchObject({
+			status: 410,
+			data: { error: expect.stringMatching(/ended|expired/i) }
+		});
 	});
 });
