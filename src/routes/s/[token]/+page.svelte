@@ -9,7 +9,12 @@
 	import Card from '$lib/components/Card.svelte';
 	import InlineError from '$lib/components/InlineError.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import { openSessionStream, replayEvents, type SessionEvent } from '$lib/events';
+	import {
+		openSessionStream,
+		replayEvents,
+		type SessionEvent,
+		type SessionStream
+	} from '$lib/events';
 	import { mockSessionTurns } from '$lib/mock';
 	import type { Message, SessionInfo } from '$lib/server/api/types';
 	import { initialChat, rebuildChat, reduceChat, sendingAnswer } from '$lib/stores/chat';
@@ -41,6 +46,7 @@
 			'Something went wrong on our side, not yours. The recruiter has been notified and will send you a new link.'
 	};
 	const MAX_ANSWER = 2000;
+	const STREAM_RETRY_MS = 5000;
 
 	let { data }: PageProps = $props();
 
@@ -92,18 +98,33 @@
 				stopReplay();
 			};
 		}
-		if (!data.sseUrl || ended) return () => clearInterval(timer);
+		const sseUrl = data.sseUrl;
+		if (!sseUrl || ended) return () => clearInterval(timer);
+		const rebuild = async () => {
+			await invalidateAll();
+			chat = rebuildChat(chat, data.messages);
+		};
+		let stream: SessionStream;
+		let retryTimer: ReturnType<typeof setTimeout> | undefined;
 		// Opened before `POST /start`: the stream accepts invited sessions, so no delta is lost.
-		const stream = openSessionStream(data.sseUrl, {
-			onEvent: apply,
-			onReconnect: async () => {
-				await invalidateAll();
-				chat = rebuildChat(chat, data.messages);
-			}
-		});
-		stream.ready.then(() => (streamReady = true));
+		const connect = () => {
+			stream = openSessionStream(sseUrl, {
+				onEvent: apply,
+				onReconnect: rebuild,
+				// The browser gave up. The load turns an ended/expired session into the 404/410
+				// page; if the session is still live, rebuild and reopen after a pause.
+				onConnectionError: async () => {
+					streamReady = false;
+					await rebuild();
+					retryTimer = setTimeout(connect, STREAM_RETRY_MS);
+				}
+			});
+			stream.ready.then(() => (streamReady = true));
+		};
+		connect();
 		return () => {
 			clearInterval(timer);
+			clearTimeout(retryTimer);
 			stream.close();
 		};
 	});
@@ -194,7 +215,7 @@
 						<span
 							class={[
 								'flex items-center gap-1 font-mono tabular-nums',
-								remainingMs !== null && remainingMs < 120_000 ? 'text-danger-text' : 'text-muted'
+								remainingMs !== null && remainingMs < 120_000 ? 'text-warning-text' : 'text-muted'
 							]}
 							aria-label="{COPY.timeLeft}: {countdown}"
 						>

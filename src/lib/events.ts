@@ -128,7 +128,15 @@ export type SessionStream = { ready: Promise<void>; close: () => void };
  */
 export function openSessionStream(
 	url: string,
-	{ onEvent, onReconnect }: { onEvent: (event: SessionEvent) => void; onReconnect?: () => void }
+	{
+		onEvent,
+		onReconnect,
+		onConnectionError
+	}: {
+		onEvent: (event: SessionEvent) => void;
+		onReconnect?: () => void;
+		onConnectionError?: () => void;
+	}
 ): SessionStream {
 	const source = new EventSource(url);
 	let opened = false;
@@ -139,6 +147,11 @@ export function openSessionStream(
 		if (opened) onReconnect?.();
 		opened = true;
 		markReady();
+	});
+	// CONNECTING means the browser is retrying a transient drop; CLOSED means it gave up
+	// (e.g. the session ended or expired while offline). No HTTP status is exposed.
+	source.addEventListener('error', () => {
+		if (source.readyState === EventSource.CLOSED) onConnectionError?.();
 	});
 	for (const name of SESSION_EVENT_NAMES) {
 		source.addEventListener(name, (raw) => {

@@ -4,7 +4,11 @@
 	let { role, content, streaming = false }: Props = $props();
 </script>
 
-<div class={['flex', role === 'applicant' ? 'justify-end' : 'justify-start']}>
+<!-- A streaming reply stays hidden from the live region until message.completed replaces it. -->
+<div
+	class={['flex', role === 'applicant' ? 'justify-end' : 'justify-start']}
+	aria-hidden={streaming || undefined}
+>
 	<p
 		class={[
 			'max-w-[85%] rounded-panel px-4 py-3 whitespace-pre-line',
@@ -14,8 +18,7 @@
 		]}
 	>
 		{content}{#if streaming}<span
-				aria-hidden="true"
-				class="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-helper align-middle"
+				class="ml-0.5 inline-block h-4 w-1.5 bg-helper align-middle motion-safe:animate-pulse"
 			></span>{/if}
 	</p>
 </div>
