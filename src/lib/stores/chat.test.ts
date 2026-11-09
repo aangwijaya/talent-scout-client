@@ -63,6 +63,16 @@ describe('reduceChat', () => {
 		expect(chat.messages[0].content).toBe(opening.content);
 	});
 
+	it("keeps input locked on the applicant's own message.completed until the AI replies", () => {
+		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
+		let chat = sendingAnswer(initialChat(session, [opening]), answer);
+		chat = reduceChat(chat, ev('message.completed', { message: answer }));
+		expect(chat.awaiting).toBe(true);
+		const reply: Message = { ...opening, id: 'm3' };
+		chat = reduceChat(chat, ev('message.completed', { message: reply }));
+		expect(chat.awaiting).toBe(false);
+	});
+
 	it('ignores a duplicate message.completed', () => {
 		let chat = initialChat(session, [opening]);
 		chat = reduceChat(chat, ev('message.completed', { message: opening }));

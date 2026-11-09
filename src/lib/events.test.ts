@@ -4,8 +4,12 @@ import { MOCK_RUN_ID, mockRunEvents } from './mock';
 
 class FakeEventSource {
 	static last: FakeEventSource;
+	static CONNECTING = 0;
+	static OPEN = 1;
+	static CLOSED = 2;
 	listeners = new Map<string, ((e: Event) => void)[]>();
 	closed = false;
+	readyState = 0;
 	constructor(readonly url: string) {
 		FakeEventSource.last = this;
 	}
@@ -49,6 +53,25 @@ describe('openSessionStream', () => {
 		es.emit('error');
 		es.emit('open');
 		expect(onReconnect).toHaveBeenCalledOnce();
+	});
+
+	it('reports a connection error once the browser gives up (CLOSED)', () => {
+		const onConnectionError = vi.fn();
+		openSessionStream('u', { onEvent: () => {}, onConnectionError });
+		const es = FakeEventSource.last;
+		es.readyState = FakeEventSource.CLOSED;
+		es.emit('error');
+		expect(onConnectionError).toHaveBeenCalledOnce();
+	});
+
+	it('leaves a transient drop (CONNECTING) to the browser reconnect', () => {
+		const onConnectionError = vi.fn();
+		openSessionStream('u', { onEvent: () => {}, onConnectionError });
+		const es = FakeEventSource.last;
+		es.readyState = FakeEventSource.CONNECTING;
+		es.emit('error');
+		expect(onConnectionError).not.toHaveBeenCalled();
+		expect(es.closed).toBe(false);
 	});
 
 	it('resolves ready on the first open, and close() stops the stream', async () => {
