@@ -50,8 +50,16 @@ export function rebuildChat(chat: ChatState, messages: readonly Message[]): Chat
 	};
 }
 
+/** The action result can lose the race to the stream's `message.completed` for the same answer. */
 export function sendingAnswer(chat: ChatState, answer: Message): ChatState {
-	return { ...chat, messages: [...chat.messages, answer], awaiting: true, error: null };
+	const known = chat.messages.some((m) => m.id === answer.id);
+	const messages = known ? chat.messages : [...chat.messages, answer];
+	return {
+		...chat,
+		messages,
+		awaiting: chat.finish_reason !== null || !lastIsAssistant(messages),
+		error: null
+	};
 }
 
 export function reduceChat(chat: ChatState, event: SessionEvent): ChatState {

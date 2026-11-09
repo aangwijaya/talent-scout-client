@@ -124,7 +124,10 @@ describe('sendingAnswer', () => {
 
 	it('does not duplicate an answer the stream already delivered as message.completed', () => {
 		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
-		let chat = reduceChat(initialChat(session, [opening]), ev('message.completed', { message: answer }));
+		let chat = reduceChat(
+			initialChat(session, [opening]),
+			ev('message.completed', { message: answer })
+		);
 		chat = sendingAnswer(chat, answer);
 		expect(chat.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
 		expect(chat.awaiting).toBe(true);
@@ -133,7 +136,10 @@ describe('sendingAnswer', () => {
 	it('keeps the AI reply last and input unlocked when the reply arrived before the action result', () => {
 		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
 		const reply: Message = { ...opening, id: 'm3' };
-		let chat = reduceChat(initialChat(session, [opening]), ev('message.completed', { message: answer }));
+		let chat = reduceChat(
+			initialChat(session, [opening]),
+			ev('message.completed', { message: answer })
+		);
 		chat = reduceChat(chat, ev('message.completed', { message: reply }));
 		chat = sendingAnswer(chat, answer);
 		expect(chat.messages.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
@@ -142,7 +148,10 @@ describe('sendingAnswer', () => {
 
 	it('stays locked after session.ended even if the answer was already known', () => {
 		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
-		let chat = reduceChat(initialChat(session, [opening]), ev('message.completed', { message: answer }));
+		let chat = reduceChat(
+			initialChat(session, [opening]),
+			ev('message.completed', { message: answer })
+		);
 		chat = reduceChat(chat, ev('message.completed', { message: { ...opening, id: 'm3' } }));
 		chat = reduceChat(chat, ev('session.ended', { finish_reason: 'completed' }));
 		chat = sendingAnswer(chat, answer);
