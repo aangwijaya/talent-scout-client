@@ -110,6 +110,61 @@ export type RunEvent =
 
 export type StreamEvent = SessionEvent | RunEvent;
 
+const SESSION_EVENT_NAMES = [
+	'session.updated',
+	'message.delta',
+	'message.completed',
+	'session.ended',
+	'error'
+] as const satisfies readonly SessionEvent['event'][];
+
+export type SessionStream = { ready: Promise<void>; close: () => void };
+
+/**
+ * Opens the applicant session stream (public token in the path, no credentials). The browser
+ * reconnects on its own with `Last-Event-ID`; the replay has no `message.delta`, so
+ * `onReconnect` lets the page rebuild the transcript from `GET /messages`. Closes on
+ * `session.ended`. `ready` resolves on the first open, so the page can `POST /start` after it.
+ */
+export function openSessionStream(
+	url: string,
+	{
+		onEvent,
+		onReconnect,
+		onConnectionError
+	}: {
+		onEvent: (event: SessionEvent) => void;
+		onReconnect?: () => void;
+		onConnectionError?: () => void;
+	}
+): SessionStream {
+	const source = new EventSource(url);
+	let opened = false;
+	let markReady: () => void = () => {};
+	const ready = new Promise<void>((resolve) => (markReady = resolve));
+
+	source.addEventListener('open', () => {
+		if (opened) onReconnect?.();
+		opened = true;
+		markReady();
+	});
+	// CONNECTING means the browser is retrying a transient drop; CLOSED means it gave up
+	// (e.g. the session ended or expired while offline). No HTTP status is exposed.
+	source.addEventListener('error', () => {
+		if (source.readyState === EventSource.CLOSED) onConnectionError?.();
+	});
+	for (const name of SESSION_EVENT_NAMES) {
+		source.addEventListener(name, (raw) => {
+			// The browser's own connection errors also fire `error`, without data.
+			if (!(raw instanceof MessageEvent) || typeof raw.data !== 'string') return;
+			const event = { ...JSON.parse(raw.data), event: name } as SessionEvent;
+			onEvent(event);
+			if (name === 'session.ended') source.close();
+		});
+	}
+	return { ready, close: () => source.close() };
+}
+
 function defaultDelayMs(): number {
 	return 300 + Math.random() * 500;
 }
