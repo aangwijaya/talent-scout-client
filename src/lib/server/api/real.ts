@@ -44,7 +44,7 @@ async function send(path: string, init?: RequestInit, redirectOn401 = true): Pro
 	if (res.ok) return res;
 	if (res.status === 401 && redirectOn401) {
 		clearSessionCookie(event.cookies);
-		redirectToLogin(event.url);
+		redirectToLogin(event.url, { sessionEnded: true });
 	}
 	throw await toApiError(res);
 }
