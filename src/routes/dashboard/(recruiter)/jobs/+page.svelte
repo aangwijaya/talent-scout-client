@@ -24,7 +24,7 @@
 <svelte:head><title>Jobs · Talent Scout</title></svelte:head>
 
 <div class="mb-6">
-	<h1 class="text-heading-sm text-ink">{COPY.title}</h1>
+	<h1 class="text-heading-sm font-semibold text-ink">{COPY.title}</h1>
 	<p class="mt-1 text-body-sm text-muted">{COPY.description}</p>
 </div>
 

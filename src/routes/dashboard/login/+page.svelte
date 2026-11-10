@@ -43,7 +43,7 @@
 				{COPY.sessionEnded}
 			</p>
 		{/if}
-		<h1 class="text-heading-sm text-ink">{COPY.title}</h1>
+		<h1 class="text-heading-sm font-semibold text-ink">{COPY.title}</h1>
 		<p class="mt-1 mb-6 text-body-sm text-muted">{COPY.description}</p>
 		<form
 			method="POST"

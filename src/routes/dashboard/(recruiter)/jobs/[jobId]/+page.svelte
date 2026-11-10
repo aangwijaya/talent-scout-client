@@ -96,7 +96,9 @@
 
 <div class="mt-2 mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 	<div class="min-w-0">
-		<h1 class="text-heading-sm [overflow-wrap:anywhere] text-ink">{data.job.title}</h1>
+		<h1 class="text-heading-sm font-semibold [overflow-wrap:anywhere] text-ink">
+			{data.job.title}
+		</h1>
 		<p class="mt-1 text-body-sm text-muted">
 			<span class="font-mono">{count}</span>
 			{count === 1 ? 'applicant' : 'applicants'} · {jobStatus[data.job.status]}
