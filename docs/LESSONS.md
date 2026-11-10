@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-10 — #36 A cleared session cookie leaves nothing for the next request to read
+- **Context:** showing "Your session ended" on login only after a 401 or an expired cookie, never on a first visit
+- **Problem:** by the time the browser follows the redirect to login, the cookie is gone, so the login load cannot tell an ended session from a first visit
+- **Cause:** the guard (`readSession`) and the 401 path (`real.ts`) delete the cookie in the same response that redirects
+- **Lesson:** decide it where the cookie is still visible: the guard checks the request's `cookie` header for `ts_session` and adds `reason=session_ended` to the login redirect; callers that clear a session pass `redirectToLogin(url, { sessionEnded: true })`
+- **Follow-up:** the 401 caller in `real.ts` is client#37
+- **Repeated?:** first time
+
 ### 2026-11-07 — #24 Rules that only exist as text don't run
 - **Context:** the "docs written for SvelteKit 2" lesson was logged three times, and the required `skill-update` PR was never opened
 - **Problem:** the learning rule depended on an agent remembering it, across sessions that remember nothing
