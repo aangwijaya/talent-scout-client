@@ -1,11 +1,13 @@
 import { redirect, type RequestEvent } from '@sveltejs/kit';
-import type { RecruiterSession } from './session';
+import { SESSION_COOKIE, type RecruiterSession } from './session';
 
 export const DASHBOARD_PATH = '/dashboard';
 export const LOGIN_PATH = '/dashboard/login';
 export const LOGOUT_PATH = '/dashboard/logout';
 export const HOME_PATH = '/dashboard/jobs';
 const PARSE_BASE = 'http://relative.invalid';
+const REASON_PARAM = 'reason';
+const SESSION_ENDED = 'session_ended';
 
 /**
  * Returns a same-origin path that is safe to redirect to, or null. Parsing the way a browser does
@@ -53,18 +55,35 @@ export function loginRedirectTarget(redirectTo: string | null | undefined): stri
 	return returnPath(redirectTo) ?? HOME_PATH;
 }
 
-/** Redirects to login, coming back to the requested path afterwards. */
-export function redirectToLogin(url: URL): never {
+/** True when login was reached because a session was cleared, so it can say the session ended. */
+export function sessionEndedNotice(url: URL): boolean {
+	return url.searchParams.get(REASON_PARAM) === SESSION_ENDED;
+}
+
+/**
+ * Redirects to login, coming back to the requested path afterwards. `sessionEnded` is for a
+ * session that was just cleared (a 401 or an expired cookie), never for a first visit.
+ */
+export function redirectToLogin(url: URL, { sessionEnded = false } = {}): never {
+	const params = new URLSearchParams();
 	const redirectTo = returnPath(url.pathname + url.search);
-	redirect(
-		303,
-		redirectTo ? `${LOGIN_PATH}?redirectTo=${encodeURIComponent(redirectTo)}` : LOGIN_PATH
-	);
+	if (redirectTo) params.set('redirectTo', redirectTo);
+	if (sessionEnded) params.set(REASON_PARAM, SESSION_ENDED);
+	const query = params.toString();
+	redirect(303, query ? `${LOGIN_PATH}?${query}` : LOGIN_PATH);
+}
+
+/** The browser sent a session cookie; `readSession` has already dropped it if it was invalid. */
+function sentSessionCookie(request: Request): boolean {
+	return (request.headers.get('cookie') ?? '')
+		.split(';')
+		.some((pair) => pair.trim().startsWith(`${SESSION_COOKIE}=`));
 }
 
 export function requireRecruiter({
 	locals,
-	url
-}: Pick<RequestEvent, 'locals' | 'url'>): RecruiterSession {
-	return locals.recruiter ?? redirectToLogin(url);
+	url,
+	request
+}: Pick<RequestEvent, 'locals' | 'url' | 'request'>): RecruiterSession {
+	return locals.recruiter ?? redirectToLogin(url, { sessionEnded: sentSessionCookie(request) });
 }

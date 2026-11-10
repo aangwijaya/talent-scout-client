@@ -1,13 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { api } from '$lib/server/api';
 import { ApiError } from '$lib/server/api/types';
-import { HOME_PATH, loginRedirectTarget } from '$lib/server/guards';
+import { HOME_PATH, loginRedirectTarget, sessionEndedNotice } from '$lib/server/guards';
 import { setSessionCookie } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals }) => {
+export const load: PageServerLoad = ({ locals, url }) => {
 	if (locals.recruiter) redirect(303, HOME_PATH);
-	return {};
+	return { sessionEnded: sessionEndedNotice(url) };
 };
 
 export const actions: Actions = {
@@ -20,7 +20,7 @@ export const actions: Actions = {
 			setSessionCookie(cookies, await api.login(password));
 		} catch (err) {
 			if (!(err instanceof ApiError)) throw err;
-			if (err.status === 401) return fail(401, { error: 'Wrong password.' });
+			if (err.status === 401) return fail(401, { error: 'That password is not correct.' });
 			return fail(err.status, { error: 'Could not sign in right now. Please try again.' });
 		}
 		redirect(303, loginRedirectTarget(url.searchParams.get('redirectTo')));

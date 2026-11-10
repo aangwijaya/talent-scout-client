@@ -5,8 +5,8 @@
 
 	type Common = {
 		variant?: 'primary' | 'secondary' | 'neutral' | 'destructive';
-		/** `lg` is the 44px touch target required on applicant pages (DESIGN.md §4). */
-		size?: 'md' | 'lg';
+		/** `lg` is the 44px touch target required on applicant pages (DESIGN.md §4); `sm` is for table rows. */
+		size?: 'sm' | 'md' | 'lg';
 		children: Snippet;
 	};
 	type ButtonProps = Common & HTMLButtonAttributes & { href?: undefined; loading?: boolean };
@@ -28,9 +28,9 @@
 		neutral: 'border-line bg-card text-body hover:bg-subtle',
 		destructive: 'border-danger bg-card text-danger-text hover:bg-danger/10'
 	};
-	const sizes = { md: 'h-9', lg: 'h-11' };
+	const sizes = { sm: 'h-8 gap-1.5 px-3', md: 'h-9 gap-2 px-4', lg: 'h-11 gap-2 px-4' };
 	const classes = $derived([
-		'inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border px-4 text-body-sm font-medium outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-line disabled:bg-subtle disabled:text-helper',
+		'inline-flex cursor-pointer items-center justify-center rounded-full border text-body-sm font-medium outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-line disabled:bg-subtle disabled:text-helper',
 		variants[variant],
 		sizes[size],
 		className

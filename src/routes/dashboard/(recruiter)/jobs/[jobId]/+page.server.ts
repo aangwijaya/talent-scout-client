@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { api } from '$lib/server/api';
 import { ApiError, type ApplicationStatus } from '$lib/server/api/types';
+import { rethrowApiError } from '../../api-error';
 import type { PageServerLoad } from './$types';
 
 const STATUSES = [
@@ -27,7 +28,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		]);
 		return { job, applications: items, status, statuses: STATUSES };
 	} catch (err) {
-		if (err instanceof ApiError && err.status === 404) error(404, 'This job could not be found.');
-		throw err;
+		if (err instanceof ApiError && err.status === 404) error(404, "This job doesn't exist");
+		rethrowApiError(err);
 	}
 };
