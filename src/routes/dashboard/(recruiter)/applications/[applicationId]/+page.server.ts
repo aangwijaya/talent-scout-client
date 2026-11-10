@@ -48,7 +48,12 @@ export const actions: Actions = {
 	},
 	invite: async ({ params }) => {
 		try {
-			return { invite: await api.resendInvite(params.applicationId) };
+			// The contract allows this only for invited sessions or failed applications, and both
+			// end up `invited`; returning it keeps the page right even when the load doesn't rerun.
+			return {
+				invite: await api.resendInvite(params.applicationId),
+				status: 'invited' as const
+			};
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 409) {
 				return fail(409, { inviteError: err.message });

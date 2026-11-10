@@ -100,7 +100,7 @@ function plural(count: number, one: string, many: string): string {
 export function sessionMeta(session: SessionSummary | null): string | null {
 	if (!session) return null;
 	const parts = [
-		`Session ${session.status}`,
+		`Session ${session.finish_reason === 'failed' ? 'failed' : session.status}`,
 		plural(session.question_count, 'question', 'questions')
 	];
 	if (session.started_at && session.ended_at) {
@@ -123,9 +123,10 @@ export function manualReviewNote(count: number): string | null {
 
 const relative = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
+/** Past times only: a time after `now` (the page clock is older than the event) is "just now". */
 export function relativeTime(iso: string, now: number): string {
 	const minutes = Math.round((Date.parse(iso) - now) / MINUTE_MS);
-	if (Math.abs(minutes) < 1) return 'just now';
+	if (minutes > -1) return 'just now';
 	if (Math.abs(minutes) < 60) return relative.format(minutes, 'minute');
 	const hours = Math.round(minutes / 60);
 	if (Math.abs(hours) < 24) return relative.format(hours, 'hour');

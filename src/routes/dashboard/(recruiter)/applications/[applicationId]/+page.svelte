@@ -45,7 +45,9 @@
 
 	const scoreByKey = $derived(new Map(detail.scores.map((score) => [score.rubric_key, score])));
 	const manualCount = $derived(
-		detail.job.rubric.filter(({ key }) => scoreByKey.get(key)?.status !== 'valid').length
+		canDecide(status)
+			? detail.job.rubric.filter(({ key }) => scoreByKey.get(key)?.status !== 'valid').length
+			: 0
 	);
 	const showScores = $derived(canDecide(status) || status === 'scoring');
 	const hasTranscript = $derived(detail.messages.length > 0);
@@ -93,7 +95,7 @@
 		inviting = true;
 		return async ({ update }) => {
 			inviting = false;
-			await update({ reset: false, invalidateAll: false });
+			await update({ reset: false });
 		};
 	};
 
@@ -404,24 +406,26 @@
 		</p>
 	{/if}
 
-	{#if !hasTranscript && !showScores}
-		<div
-			class="flex flex-col items-center gap-2 rounded-panel border border-dashed border-line px-6 py-12 text-center"
-		>
-			<MessageCircle size={32} aria-hidden="true" class="text-helper" />
-			<p class="text-subheading font-semibold text-ink">The screening hasn't started</p>
-			<p class="text-body-sm text-muted">
-				The transcript and scores appear here after {name} finishes.
-			</p>
-		</div>
-	{:else if !showScores}
-		<Transcript
-			messages={detail.messages}
-			topics={detail.topics}
-			scores={detail.scores}
-			applicantName={application.name}
-			{highlighted}
-		/>
+	{#if !showScores}
+		{#if hasTranscript}
+			<Transcript
+				messages={detail.messages}
+				topics={detail.topics}
+				scores={detail.scores}
+				applicantName={application.name}
+				{highlighted}
+			/>
+		{:else if status === 'applied' || status === 'invited'}
+			<div
+				class="flex flex-col items-center gap-2 rounded-panel border border-dashed border-line px-6 py-12 text-center"
+			>
+				<MessageCircle size={32} aria-hidden="true" class="text-helper" />
+				<p class="text-subheading font-semibold text-ink">The screening hasn't started</p>
+				<p class="text-body-sm text-muted">
+					The transcript and scores appear here after {name} finishes.
+				</p>
+			</div>
+		{/if}
 	{:else}
 		<div
 			role="tablist"
