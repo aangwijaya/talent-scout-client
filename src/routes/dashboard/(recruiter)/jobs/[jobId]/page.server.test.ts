@@ -24,7 +24,7 @@ describe('applicants load', () => {
 		const data = await run(MOCK_JOB_ID, '?status=review');
 		expect(data?.status).toBe('review');
 		expect(data?.applications.length).toBeGreaterThan(0);
-		expect(data?.applications.every((a) => a.status === 'review')).toBe(true);
+		expect(data?.applications.every((a: { status: string }) => a.status === 'review')).toBe(true);
 	});
 
 	it('ignores an unknown status', async () => {

@@ -1,4 +1,4 @@
-import { isRedirect, type RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handle, handleError, handleFetch } from './hooks.server';
 
