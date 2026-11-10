@@ -106,14 +106,14 @@ describe('realApi', () => {
 		expect((error as Error).message).not.toContain('api.test');
 	});
 
-	it('on a 401 clears the session cookie and redirects to login', async () => {
+	it('on a 401 clears the session cookie and redirects to login with the session-ended notice', async () => {
 		event.fetch.mockResolvedValue(json(401, { error: { code: 'unauthorized', message: 'No' } }));
 		const error = await caught(realApi.listJobs());
 		expect(event.cookies.delete).toHaveBeenCalledWith('ts_session', { path: '/' });
 		expect(isRedirect(error)).toBe(true);
 		expect(error).toMatchObject({
 			status: 303,
-			location: '/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%3Fstatus%3Dreview'
+			location: '/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%3Fstatus%3Dreview&reason=session_ended'
 		});
 	});
 
