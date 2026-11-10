@@ -5,7 +5,9 @@ import {
 	LOGIN_PATH,
 	loginRedirectTarget,
 	normalizeRefererPath,
-	requireRecruiter
+	redirectToLogin,
+	requireRecruiter,
+	sessionEndedNotice
 } from './guards';
 
 describe('normalizeRefererPath', () => {
@@ -70,11 +72,13 @@ describe('isRecruiterRoute', () => {
 });
 
 describe('requireRecruiter', () => {
-	const location = (path: string): string => {
+	const location = (path: string, cookie?: string): string => {
+		const url = new URL(path, 'http://app.test');
 		try {
 			requireRecruiter({
 				locals: { recruiter: null },
-				url: new URL(path, 'http://app.test')
+				url,
+				request: new Request(url, { headers: cookie ? { cookie } : {} })
 			});
 		} catch (error) {
 			if (isRedirect(error) && error.status === 303) return error.location;
@@ -85,7 +89,8 @@ describe('requireRecruiter', () => {
 
 	it('returns the session when there is one', () => {
 		const recruiter = { token: 't', expiresAt: 1 };
-		expect(requireRecruiter({ locals: { recruiter }, url: new URL('http://app.test/') })).toBe(
+		const url = new URL('http://app.test/');
+		expect(requireRecruiter({ locals: { recruiter }, url, request: new Request(url) })).toBe(
 			recruiter
 		);
 	});
@@ -102,6 +107,50 @@ describe('requireRecruiter', () => {
 
 	it('drops the logout path, so signing in does not log the recruiter out again', () => {
 		expect(location('/dashboard/logout')).toBe(LOGIN_PATH);
+	});
+
+	it('marks the session as ended when the request carried a cookie that is no longer valid', () => {
+		expect(location('/dashboard/jobs', 'theme=light; ts_session=1.expired')).toBe(
+			'/dashboard/login?redirectTo=%2Fdashboard%2Fjobs&reason=session_ended'
+		);
+		expect(location('/dashboard/logout', 'ts_session=1.expired')).toBe(
+			`${LOGIN_PATH}?reason=session_ended`
+		);
+	});
+
+	it('does not mark a first visit without a session cookie as ended', () => {
+		expect(location('/dashboard/jobs', 'not_ts_session=1')).not.toContain('reason=');
+		expect(location('/dashboard/jobs')).not.toContain('reason=');
+	});
+});
+
+describe('redirectToLogin', () => {
+	const location = (sessionEnded?: boolean): string => {
+		try {
+			redirectToLogin(new URL('http://app.test/dashboard/jobs/1'), { sessionEnded });
+		} catch (error) {
+			if (isRedirect(error)) return error.location;
+			throw error;
+		}
+		return expect.unreachable('expected a redirect');
+	};
+
+	it('adds the session-ended reason only when asked, as after a 401', () => {
+		expect(location(true)).toBe(
+			'/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%2F1&reason=session_ended'
+		);
+		expect(location()).toBe('/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%2F1');
+	});
+});
+
+describe('sessionEndedNotice', () => {
+	const notice = (search: string) =>
+		sessionEndedNotice(new URL(`http://app.test/dashboard/login${search}`));
+
+	it('is true only for the reason the guard adds', () => {
+		expect(notice('?reason=session_ended')).toBe(true);
+		expect(notice('')).toBe(false);
+		expect(notice('?reason=other')).toBe(false);
 	});
 });
 

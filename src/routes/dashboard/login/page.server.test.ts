@@ -9,9 +9,12 @@ const { actions, load } = await import('./+page.server');
 
 const EXPIRES_AT = new Date(Date.now() + 3_600_000).toISOString();
 
-function event(options: { password?: string; redirectTo?: string; recruiter?: object } = {}) {
+function event(
+	options: { password?: string; redirectTo?: string; recruiter?: object; reason?: string } = {}
+) {
 	const url = new URL('http://app.test/dashboard/login');
 	if (options.redirectTo) url.searchParams.set('redirectTo', options.redirectTo);
+	if (options.reason) url.searchParams.set('reason', options.reason);
 	const body = new FormData();
 	if (options.password !== undefined) body.set('password', options.password);
 	return {
@@ -39,8 +42,14 @@ describe('load', () => {
 		expect(isRedirect(thrown) && thrown.location).toBe('/dashboard/jobs');
 	});
 
-	it('renders the form without a session', async () => {
-		await expect(settle(() => load(event() as never))).resolves.toEqual({});
+	it('leaves out the session-ended notice on a plain first visit', async () => {
+		await expect(settle(() => load(event() as never))).resolves.toEqual({ sessionEnded: false });
+	});
+
+	it('shows the session-ended notice after the guard cleared a session', async () => {
+		await expect(settle(() => load(event({ reason: 'session_ended' }) as never))).resolves.toEqual({
+			sessionEnded: true
+		});
 	});
 });
 
@@ -77,7 +86,9 @@ describe('login action', () => {
 		const e = event({ password: 'nope' });
 		const result = await settle(() => actions.default(e as never));
 		expect(isActionFailure(result) && result.status).toBe(401);
-		expect(isActionFailure(result) && result.data).toEqual({ error: 'Wrong password.' });
+		expect(isActionFailure(result) && result.data).toEqual({
+			error: 'That password is not correct.'
+		});
 		expect(e.cookies.set).not.toHaveBeenCalled();
 	});
 
