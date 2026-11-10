@@ -16,7 +16,11 @@ function form(fields: Record<string, string>): FormData {
 	return data;
 }
 
-function act(name: 'decide' | 'invite', applicationId: string, fields: Record<string, string> = {}) {
+function act(
+	name: 'decide' | 'invite',
+	applicationId: string,
+	fields: Record<string, string> = {}
+) {
 	const request = new Request('http://app.test/', { method: 'POST', body: form(fields) });
 	return Promise.resolve(actions[name]({ params: { applicationId }, request } as never));
 }
@@ -62,7 +66,9 @@ describe('decide action', () => {
 	it('reports a 409 invalid_state as a decision error', async () => {
 		const result = await act('decide', MOCK_APPLICATION_IDS.invited, { decision: 'reject' });
 		expect(isActionFailure(result) && result.status).toBe(409);
-		expect(isActionFailure(result) && result.data).toMatchObject({ decisionError: 'invalid_state' });
+		expect(isActionFailure(result) && result.data).toMatchObject({
+			decisionError: 'invalid_state'
+		});
 	});
 });
 
@@ -87,9 +93,9 @@ describe('CV route', () => {
 	});
 
 	it('turns an unknown application into a 404', async () => {
-		const thrown = await Promise.resolve(GET({ params: { applicationId: UNKNOWN } } as never)).catch(
-			(e: unknown) => e
-		);
+		const thrown = await Promise.resolve(
+			GET({ params: { applicationId: UNKNOWN } } as never)
+		).catch((e: unknown) => e);
 		expect(isHttpError(thrown) && thrown.status).toBe(404);
 	});
 });

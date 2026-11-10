@@ -60,7 +60,7 @@ describe('review page, scored application', () => {
 		const evidence = detail.scores[0].evidence[0];
 		expect(body).toContain(`href="#${evidence.message_id}"`);
 		expect(body).toContain('Jump to message');
-		expect(body).toContain('OVERALL SCORE');
+		expect(body).toMatch(/uppercase[^"]*"[^>]*>\s*Overall score/);
 		expect(body).toContain('3.40');
 	});
 

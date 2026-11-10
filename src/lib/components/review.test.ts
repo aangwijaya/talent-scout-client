@@ -123,7 +123,12 @@ describe('groupByTopic', () => {
 
 	it('starts a group whenever the topic changes, keeping message order', () => {
 		const groups = groupByTopic(
-			[message('a'), message('b'), message('c', { topic_id: 't2' }), message('d', { topic_id: null })],
+			[
+				message('a'),
+				message('b'),
+				message('c', { topic_id: 't2' }),
+				message('d', { topic_id: null })
+			],
 			topics
 		);
 		expect(groups.map((g) => [g.topic?.position ?? null, g.messages.map((m) => m.id)])).toEqual([
