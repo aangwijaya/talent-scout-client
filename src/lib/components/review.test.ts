@@ -157,6 +157,12 @@ describe('sessionMeta', () => {
 		);
 		expect(sessionMeta(null)).toBeNull();
 	});
+
+	it('names a screening that ended with a system error as failed', () => {
+		expect(sessionMeta({ ...base, finish_reason: 'failed' })).toBe(
+			'Session failed · 2 questions · 15 min'
+		);
+	});
 });
 
 describe('small formatters', () => {
@@ -176,6 +182,12 @@ describe('small formatters', () => {
 		expect(relativeTime('2026-11-11T05:55:00Z', now)).toBe('5 minutes ago');
 		expect(relativeTime('2026-11-11T03:00:00Z', now)).toBe('3 hours ago');
 		expect(relativeTime('2026-11-10T06:00:00Z', now)).toBe('yesterday');
+	});
+
+	it('never puts a past event in the future when the page clock is older', () => {
+		const now = Date.parse('2026-11-11T06:00:00Z');
+		expect(relativeTime('2026-11-11T06:05:00Z', now)).toBe('just now');
+		expect(relativeTime('2026-11-11T09:00:00Z', now)).toBe('just now');
 	});
 
 	it('takes the first name', () => {

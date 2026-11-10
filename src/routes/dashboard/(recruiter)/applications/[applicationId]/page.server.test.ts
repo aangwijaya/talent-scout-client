@@ -78,6 +78,11 @@ describe('invite action', () => {
 		expect(result).toMatchObject({ invite: { invite_url: expect.stringContaining('/s/') } });
 	});
 
+	it('returns a failed application to invited', async () => {
+		const result = await act('invite', MOCK_APPLICATION_IDS.failed);
+		expect(result).toMatchObject({ status: 'invited', invite: { session_id: expect.any(String) } });
+	});
+
 	it('reports a 409 as an invite error', async () => {
 		const result = await act('invite', MOCK_APPLICATION_IDS.review);
 		expect(isActionFailure(result) && result.status).toBe(409);
@@ -89,6 +94,8 @@ describe('CV route', () => {
 		const response = await GET({ params: { applicationId: MOCK_APPLICATION_IDS.review } } as never);
 		expect(response.headers.get('content-type')).toBe('application/pdf');
 		expect(response.headers.get('content-disposition')).toContain('inline');
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(response.headers.get('x-content-type-options')).toBe('nosniff');
 		expect(await response.text()).toContain('%PDF');
 	});
 

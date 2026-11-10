@@ -143,6 +143,23 @@ describe('review page, other states', () => {
 		expect(body).toContain("Adi's screening ended with a system error");
 		expect(body).toContain(`href="/dashboard/runs/${detail.graph_run?.id}"`);
 		expect(body).toContain('Get invite link');
+		expect(body).toContain('Session failed · ');
+		expect(body).not.toContain("The screening hasn't started");
+	});
+
+	it('failed: after a new invite the application reads as invited, with the new link', () => {
+		const body = page(fixture('failed'), {
+			status: 'invited',
+			invite: {
+				session_id: 's',
+				expires_at: '2026-11-18T06:00:00Z',
+				invite_url: 'https://talentscout.vercel.app/s/retry-token'
+			}
+		});
+		expect(body).toMatch(/>\s*Invited\s*</);
+		expect(body).not.toMatch(/>\s*Failed\s*</);
+		expect(body).not.toContain('The screening could not finish');
+		expect(body).toContain('https://talentscout.vercel.app/s/retry-token');
 	});
 
 	it('in session: progress banner, transcript so far, no decision', () => {
@@ -164,5 +181,7 @@ describe('review page, other states', () => {
 		expect(body).toContain('The AI is scoring the transcript.');
 		expect(body).toContain('aria-busy="true"');
 		expect(body).not.toMatch(/>\s*Shortlist\s*</);
+		expect(body).not.toContain('needs review');
+		expect(body).toMatch(/role="tab"[^>]*>\s*Scores\s*</);
 	});
 });
