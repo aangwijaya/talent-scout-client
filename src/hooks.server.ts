@@ -1,13 +1,36 @@
 import { API_BASE_URL, BFF_SHARED_SECRET } from '$app/env/private';
+import { isRedirect, type RequestEvent } from '@sveltejs/kit';
 import type { Handle, HandleFetch, HandleServerError } from '@sveltejs/kit/hooks';
-import { isRecruiterRoute, requireRecruiter } from '$lib/server/guards';
+import { isDashboardRoute, isRecruiterRoute, requireRecruiter } from '$lib/server/guards';
 import { redact } from '$lib/server/redact';
 import { readSession } from '$lib/server/session';
 
-export const handle: Handle = ({ event, resolve }) => {
+/** Sets the header, copying the response first when its headers are immutable. */
+function noStore(response: Response): Response {
+	try {
+		response.headers.set('cache-control', 'no-store');
+		return response;
+	} catch {
+		const copy = new Response(response.body, response);
+		copy.headers.set('cache-control', 'no-store');
+		return copy;
+	}
+}
+
+export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.recruiter = readSession(event.cookies);
-	if (isRecruiterRoute(event)) requireRecruiter(event);
-	return resolve(event);
+	if (!isDashboardRoute(event)) return resolve(event);
+
+	// Recruiter pages, actions and redirects must never be served from a shared or back/forward cache.
+	try {
+		if (isRecruiterRoute(event)) requireRecruiter(event);
+	} catch (thrown) {
+		if (!isRedirect(thrown)) throw thrown;
+		return noStore(
+			new Response(null, { status: thrown.status, headers: { location: thrown.location } })
+		);
+	}
+	return noStore(await resolve(event));
 };
 
 function isApiRequest(url: string): boolean {
@@ -30,9 +53,18 @@ export const handleFetch: HandleFetch = ({ event, request, fetch }) => {
 
 export const handleError: HandleServerError = ({ kind, error, event }) => {
 	// Other kinds keep their own messages, such as the 404 and 410 text shown on `/s/[token]`.
+	// A deliberate `error(5xx)` keeps its message too, but is still logged.
+	if (kind === 'app' && (error.status ?? 0) >= 500) {
+		log(event, `${error.status} ${error.message}`);
+		return;
+	}
 	if (kind !== 'unknown') return;
 
-	const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+	log(event, error instanceof Error ? (error.stack ?? error.message) : String(error));
+	return { message: 'Something went wrong' };
+};
+
+function log(event: RequestEvent, detail: string): void {
 	// Header-name patterns miss a bare secret value, so pass the values themselves.
 	const secrets = [event.locals.recruiter?.token, BFF_SHARED_SECRET].filter(
 		(secret): secret is string => Boolean(secret)
@@ -40,5 +72,4 @@ export const handleError: HandleServerError = ({ kind, error, event }) => {
 	console.error(
 		`${event.request.method} ${event.route.id ?? '(no route)'}: ${redact(detail, secrets)}`
 	);
-	return { message: 'Something went wrong' };
-};
+}
