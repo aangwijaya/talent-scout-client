@@ -10,13 +10,15 @@ vi.mock('$app/env/private', () => ({
 const FUTURE = Date.now() + 60_000;
 const API = 'http://api.test:8080/api/v1';
 
-function fakeEvent(options: { routeId?: string | null; path?: string; cookie?: string } = {}) {
-	const { routeId = null, path = '/', cookie } = options;
+function fakeEvent(
+	options: { routeId?: string | null; path?: string; cookie?: string; method?: string } = {}
+) {
+	const { routeId = null, path = '/', cookie, method = 'GET' } = options;
 	return {
 		route: { id: routeId },
 		url: new URL(path, 'http://app.test'),
 		locals: {},
-		request: new Request(new URL(path, 'http://app.test')),
+		request: new Request(new URL(path, 'http://app.test'), { method }),
 		cookies: { get: () => cookie, delete: vi.fn() }
 	} as unknown as RequestEvent;
 }
@@ -28,22 +30,18 @@ describe('handle', () => {
 		return { resolve };
 	};
 
-	it('redirects a recruiter route without a session, before anything resolves', () => {
+	it('redirects a recruiter route without a session, before anything resolves', async () => {
 		const event = fakeEvent({
 			routeId: '/dashboard/(recruiter)/jobs',
 			path: '/dashboard/jobs?status=review'
 		});
 		const resolve = vi.fn();
-		try {
-			handle({ event, resolve });
-			expect.unreachable('expected a redirect');
-		} catch (error) {
-			if (!isRedirect(error)) throw error;
-			expect(error.status).toBe(303);
-			expect(error.location).toBe(
-				'/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%3Fstatus%3Dreview'
-			);
-		}
+		const res = await handle({ event, resolve });
+		expect(res.status).toBe(303);
+		expect(res.headers.get('location')).toBe(
+			'/dashboard/login?redirectTo=%2Fdashboard%2Fjobs%3Fstatus%3Dreview'
+		);
+		expect(res.headers.get('cache-control')).toBe('no-store');
 		expect(resolve).not.toHaveBeenCalled();
 	});
 
@@ -67,6 +65,40 @@ describe('handle', () => {
 		const { resolve } = run(event);
 		expect(resolve).toHaveBeenCalledOnce();
 		expect(event.locals.recruiter).toBeNull();
+	});
+});
+
+describe('handle Cache-Control', () => {
+	const SESSION = `${FUTURE}.tok`;
+	const respond = (event: RequestEvent, response = new Response('ok')) =>
+		Promise.resolve(handle({ event, resolve: async () => response }));
+
+	it.each([
+		['a page', { routeId: '/dashboard/(recruiter)/jobs', path: '/dashboard/jobs' }],
+		['the login page', { routeId: '/dashboard/login', path: '/dashboard/login' }],
+		['a form action', { routeId: '/dashboard/login', path: '/dashboard/login', method: 'POST' }],
+		['an unmatched dashboard path', { routeId: null, path: '/dashboard/nope' }]
+	])('sets no-store on %s', async (_, options) => {
+		const res = await respond(fakeEvent({ ...options, cookie: SESSION }));
+		expect(res.headers.get('cache-control')).toBe('no-store');
+	});
+
+	it('sets no-store on a redirect from a load or action, even with immutable headers', async () => {
+		const res = await respond(
+			fakeEvent({ routeId: '/dashboard', path: '/dashboard', cookie: SESSION }),
+			Response.redirect('http://app.test/dashboard/jobs', 303)
+		);
+		expect(res.status).toBe(303);
+		expect(res.headers.get('location')).toBe('http://app.test/dashboard/jobs');
+		expect(res.headers.get('cache-control')).toBe('no-store');
+	});
+
+	it.each([
+		['/apply/[jobId]', '/apply/1'],
+		['/s/[token]', '/s/abc']
+	])('leaves %s unchanged', async (routeId, path) => {
+		const res = await respond(fakeEvent({ routeId, path }));
+		expect(res.headers.get('cache-control')).toBeNull();
 	});
 });
 
@@ -176,6 +208,27 @@ describe('handleError', () => {
 		for (const secret of ['session-value', 'abc', 'def', 'ghi', 'jkl']) {
 			expect(line).not.toContain(secret);
 		}
+	});
+
+	it('logs a deliberate 5xx with secrets redacted and keeps its message', () => {
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const event = fakeEvent({ routeId: '/dashboard/(recruiter)/jobs' });
+		event.locals.recruiter = { token: 'session-value', expiresAt: FUTURE };
+		const error = { status: 502, message: 'upstream said session-value' };
+		expect(handleError({ kind: 'app', error, event } as HandleErrorInput)).toBeUndefined();
+		expect(log).toHaveBeenCalledOnce();
+		const line = String(log.mock.calls[0][0]);
+		expect(line).toContain('GET /dashboard/(recruiter)/jobs');
+		expect(line).toContain('502');
+		expect(line).not.toContain('session-value');
+	});
+
+	it('does not log a deliberate 4xx', () => {
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const error = { status: 404, message: 'Not found' };
+		const input = { kind: 'app', error, event: fakeEvent() } as HandleErrorInput;
+		expect(handleError(input)).toBeUndefined();
+		expect(log).not.toHaveBeenCalled();
 	});
 
 	it('redacts the bare BFF secret value from the log', () => {

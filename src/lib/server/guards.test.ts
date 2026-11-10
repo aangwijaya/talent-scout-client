@@ -1,6 +1,12 @@
 import { isRedirect, type RequestEvent } from '@sveltejs/kit';
 import { describe, expect, it } from 'vitest';
-import { isRecruiterRoute, normalizeRefererPath, requireRecruiter } from './guards';
+import {
+	isRecruiterRoute,
+	LOGIN_PATH,
+	loginRedirectTarget,
+	normalizeRefererPath,
+	requireRecruiter
+} from './guards';
 
 describe('normalizeRefererPath', () => {
 	it.each([
@@ -92,5 +98,23 @@ describe('requireRecruiter', () => {
 
 	it('drops a path that is unsafe to redirect to', () => {
 		expect(location('http://app.test//evil.example')).toBe('/dashboard/login');
+	});
+
+	it('drops the logout path, so signing in does not log the recruiter out again', () => {
+		expect(location('/dashboard/logout')).toBe(LOGIN_PATH);
+	});
+});
+
+describe('loginRedirectTarget', () => {
+	it.each([
+		[null, '/dashboard/jobs'],
+		['', '/dashboard/jobs'],
+		['//evil.example', '/dashboard/jobs'],
+		['/dashboard/logout', '/dashboard/jobs'],
+		['/dashboard/logout?x=1', '/dashboard/jobs'],
+		['/dashboard/login', '/dashboard/jobs'],
+		['/dashboard/jobs/1?status=review', '/dashboard/jobs/1?status=review']
+	])('maps %s to %s', (value, expected) => {
+		expect(loginRedirectTarget(value)).toBe(expected);
 	});
 });
