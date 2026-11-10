@@ -58,8 +58,8 @@
 						class={[
 							'max-w-[85%] scroll-mt-4 px-4 py-3 text-base [overflow-wrap:anywhere] whitespace-pre-line text-body outline-2 outline-offset-2 motion-safe:transition-colors',
 							mine
-								? 'rounded-panel rounded-tr-[4px] bg-wash'
-								: 'rounded-panel rounded-tl-[4px] border border-line bg-card',
+								? 'rounded-panel rounded-tr-sm bg-wash'
+								: 'rounded-panel rounded-tl-sm border border-line bg-card',
 							highlighted === message.id ? 'bg-warning/10! outline-warning' : 'outline-transparent'
 						]}
 					>

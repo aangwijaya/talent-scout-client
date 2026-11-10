@@ -73,9 +73,11 @@
 	let highlighted = $state<string | null>(null);
 	let highlightTimer: ReturnType<typeof setTimeout> | undefined;
 
-	function openPanel(value: DecisionValue) {
+	async function openPanel(value: DecisionValue) {
 		panel = value;
 		note = '';
+		await tick();
+		document.getElementById('decision-note')?.focus();
 	}
 
 	const submitDecision: SubmitFunction = () => {
@@ -130,14 +132,15 @@
 		<nav aria-label="Breadcrumb">
 			<ol class="flex flex-wrap items-center gap-1 text-body-sm text-helper">
 				<li>
-					<a class="hover:text-brand hover:underline" href={resolve('/dashboard/(recruiter)/jobs')}
-						>Jobs</a
+					<a
+						class="inline-flex min-h-6 items-center hover:text-brand hover:underline"
+						href={resolve('/dashboard/(recruiter)/jobs')}>Jobs</a
 					>
 				</li>
 				<li aria-hidden="true">›</li>
 				<li>
 					<a
-						class="hover:text-brand hover:underline"
+						class="inline-flex min-h-6 items-center hover:text-brand hover:underline"
 						href={resolve('/dashboard/(recruiter)/jobs/[jobId]', { jobId: detail.job.id })}
 						>{detail.job.title}</a
 					>
@@ -387,7 +390,10 @@
 					Started {minutesSince(detail.session.started_at, now)} minutes ago.{/if}
 			</p>
 			{#if runHref}
-				<a href={runHref} class="text-body-sm font-medium text-brand hover:underline">
+				<a
+					href={runHref}
+					class="inline-flex min-h-6 items-center text-body-sm font-medium text-brand hover:underline"
+				>
 					Watch the graph live →
 				</a>
 			{/if}
