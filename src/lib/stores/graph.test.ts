@@ -41,12 +41,26 @@ describe('initialRunState', () => {
 		expect(state.latestEdgeId).toBeNull();
 	});
 
-	it('marks the three loop-back edges as retry paths', () => {
-		const retry = initial(MOCK_RUN_ID)
+	const retryPaths = (runId: string) =>
+		initial(runId)
 			.edges.filter((edge) => edge.retryPath)
-			.map((edge) => edge.id);
-		expect(retry.sort()).toEqual(
+			.map((edge) => edge.id)
+			.sort();
+
+	it('marks the three loop-back edges as retry paths', () => {
+		expect(retryPaths(MOCK_RUN_ID)).toEqual(
 			['evidence_check>scorer', 'interviewer>interviewer', 'plan_check>planner'].sort()
+		);
+	});
+
+	it('marks the planner self-loop as a retry path when run.started lists it', () => {
+		expect(retryPaths(MOCK_PLANNER_RETRY_RUN_ID)).toEqual(
+			[
+				'evidence_check>scorer',
+				'interviewer>interviewer',
+				'plan_check>planner',
+				'planner>planner'
+			].sort()
 		);
 	});
 });
@@ -206,6 +220,7 @@ describe('manual planner retry (EVENTS.md §6.4)', () => {
 		expect(state.latestEdgeId).toBe('planner>planner');
 		expect(state.edges.find((edge) => edge.id === 'planner>planner')).toMatchObject({
 			taken: true,
+			retryPath: true,
 			lastLabel: 'retry'
 		});
 		expect(state.nodes.planner).toMatchObject({
