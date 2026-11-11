@@ -288,16 +288,15 @@ describe('run replay data', () => {
 		expect(events.at(-1)?.event).toBe('run.completed');
 	});
 
-	it('lists the interviewer self-loop in every run.started, and both loops in the planner retry', () => {
-		for (const [runId, events] of Object.entries(mockRunEvents)) {
+	it('lists both applicant-retry self-loops once in every run.started (EVENTS.md Graph shape)', () => {
+		for (const events of Object.values(mockRunEvents)) {
 			const started = events[0];
 			if (started.event !== 'run.started') expect.unreachable('a run starts with run.started');
-			expect(started.data.edges).toContainEqual({ from: 'interviewer', to: 'interviewer' });
-			const plannerLoop = runId === MOCK_PLANNER_RETRY_RUN_ID;
-			if (plannerLoop) {
-				expect(started.data.edges).toContainEqual({ from: 'planner', to: 'planner' });
+			const { edges } = started.data;
+			for (const node of ['planner', 'interviewer'] as const) {
+				expect(edges.filter((e) => e.from === node && e.to === node)).toHaveLength(1);
 			}
-			expect(started.data.edges).toHaveLength(plannerLoop ? 12 : 11);
+			expect(edges).toHaveLength(12);
 		}
 	});
 
