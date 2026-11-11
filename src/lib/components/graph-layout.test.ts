@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE_GEOMETRY } from './graph-layout';
+import { EDGE_GEOMETRY, type EdgeGeometry } from './graph-layout';
 
 // The label chip is `text-caption` (12px) with px-2 and a 1px border: 18px line + 2px border tall.
 const CHIP_HEIGHT = 20;
@@ -9,23 +9,36 @@ type Point = [number, number];
 const points = (path: string): Point[] =>
 	[...path.matchAll(/(\d+),(\d+)/g)].map(([, x, y]) => [Number(x), Number(y)]);
 
+function chipCrossings(path: string, { label, labelX, labelY }: EdgeGeometry): string[] {
+	const box = {
+		left: labelX - chipWidth(label) / 2,
+		right: labelX + chipWidth(label) / 2,
+		top: labelY - CHIP_HEIGHT / 2,
+		bottom: labelY + CHIP_HEIGHT / 2
+	};
+	const corners = points(path);
+	expect(corners.length).toBeGreaterThan(1);
+	return corners.slice(1).flatMap(([x2, y2], i) => {
+		const [x1, y1] = corners[i];
+		const crossesX = Math.max(x1, x2) >= box.left && Math.min(x1, x2) <= box.right;
+		const crossesY = Math.max(y1, y2) >= box.top && Math.min(y1, y2) <= box.bottom;
+		return crossesX && crossesY ? [`${x1},${y1} → ${x2},${y2}`] : [];
+	});
+}
+
 describe('edge labels', () => {
-	for (const [id, { path, label, labelX, labelY }] of Object.entries(EDGE_GEOMETRY)) {
+	it('no chip, "planned" included, overlaps the planner self-loop', () => {
+		const loop = EDGE_GEOMETRY['planner>planner'];
+		expect(loop).toBeDefined();
+		for (const [id, geometry] of Object.entries(EDGE_GEOMETRY)) {
+			expect(chipCrossings(loop.path, geometry), id).toEqual([]);
+		}
+	});
+
+	for (const [id, geometry] of Object.entries(EDGE_GEOMETRY)) {
+		const { path, label, labelX, labelY } = geometry;
 		it(`${id}: the "${label}" chip sits beside its line, never on it`, () => {
-			const box = {
-				left: labelX - chipWidth(label) / 2,
-				right: labelX + chipWidth(label) / 2,
-				top: labelY - CHIP_HEIGHT / 2,
-				bottom: labelY + CHIP_HEIGHT / 2
-			};
-			const corners = points(path);
-			expect(corners.length).toBeGreaterThan(1);
-			for (let i = 1; i < corners.length; i++) {
-				const [[x1, y1], [x2, y2]] = [corners[i - 1], corners[i]];
-				const crossesX = Math.max(x1, x2) >= box.left && Math.min(x1, x2) <= box.right;
-				const crossesY = Math.max(y1, y2) >= box.top && Math.min(y1, y2) <= box.bottom;
-				expect(crossesX && crossesY, `segment ${x1},${y1} → ${x2},${y2}`).toBe(false);
-			}
+			expect(chipCrossings(path, geometry)).toEqual([]);
 		});
 
 		it(`${id}: the "${label}" chip stays close to its line`, () => {

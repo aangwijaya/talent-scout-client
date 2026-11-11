@@ -7,6 +7,7 @@ import {
 	MOCK_NEEDS_MANUAL_RUN_ID,
 	MOCK_NODE_FAILED_RUN_ID,
 	MOCK_PLANNER_FAILED_RUN_ID,
+	MOCK_PLANNER_RETRY_RUN_ID,
 	MOCK_RUN_ID,
 	mockMessages,
 	mockRunEvents,
@@ -259,12 +260,44 @@ describe('run replay data', () => {
 		expect(retry?.data).toMatchObject({ attempt: 3, max_attempts: 4, reason: 'llm_unavailable' });
 	});
 
-	it('lists the interviewer self-loop in every run.started', () => {
-		for (const events of Object.values(mockRunEvents)) {
+	it('follows §6.4 for a manual planner retry', () => {
+		const events = mockRunEvents[MOCK_PLANNER_RETRY_RUN_ID];
+		const success = compact(mockRunEvents[MOCK_RUN_ID]);
+		expect(compact(events)).toEqual([
+			'run.started',
+			'node.started(planner#1)',
+			'node.failed(planner#1)',
+			'node.started(planner#2)',
+			'node.failed(planner#2)',
+			'loop.retry(planner#3)',
+			'edge planner>planner retry',
+			...node('planner', 3),
+			'edge planner>plan_check planned',
+			...node('plan_check', 3),
+			'check.passed(plan_check#3)',
+			'topic.changed(plan_check#3)',
+			'edge plan_check>interviewer valid',
+			...success.slice(planOk.length)
+		]);
+		expect(events.flatMap((e) => (e.event === 'node.failed' ? [e.data.will_retry] : []))).toEqual([
+			true,
+			false
+		]);
+		const retry = events.find((e) => e.event === 'loop.retry');
+		expect(retry?.data).toMatchObject({ attempt: 3, max_attempts: 4, reason: 'llm_unavailable' });
+		expect(events.at(-1)?.event).toBe('run.completed');
+	});
+
+	it('lists the interviewer self-loop in every run.started, and both loops in the planner retry', () => {
+		for (const [runId, events] of Object.entries(mockRunEvents)) {
 			const started = events[0];
 			if (started.event !== 'run.started') expect.unreachable('a run starts with run.started');
 			expect(started.data.edges).toContainEqual({ from: 'interviewer', to: 'interviewer' });
-			expect(started.data.edges).toHaveLength(11);
+			const plannerLoop = runId === MOCK_PLANNER_RETRY_RUN_ID;
+			if (plannerLoop) {
+				expect(started.data.edges).toContainEqual({ from: 'planner', to: 'planner' });
+			}
+			expect(started.data.edges).toHaveLength(plannerLoop ? 12 : 11);
 		}
 	});
 

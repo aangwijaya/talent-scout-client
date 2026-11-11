@@ -68,6 +68,7 @@ export const NODE_IDS = [
 ] as const satisfies readonly NodeId[];
 
 const RETRY_PATHS = new Set([
+	'planner>planner',
 	'plan_check>planner',
 	'interviewer>interviewer',
 	'evidence_check>scorer'

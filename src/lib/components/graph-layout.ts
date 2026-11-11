@@ -62,6 +62,12 @@ export type EdgeGeometry = { path: string; label: string; labelX: number; labelY
 // Each label sits beside its line so the line and arrowhead stay visible: centred 18px above a
 // horizontal segment, 18px below the two lower-third return lines, and right of the verdict line.
 export const EDGE_GEOMETRY: Record<string, EdgeGeometry> = {
+	'planner>planner': {
+		path: 'M100,96 L100,52 L180,52 L180,96',
+		label: 'retry',
+		labelX: 140,
+		labelY: 34
+	},
 	'planner>plan_check': { path: 'M240,117 L304,117', label: 'planned', labelX: 272, labelY: 99 },
 	'plan_check>planner': { path: 'M304,139 L240,139', label: 'invalid', labelX: 272, labelY: 157 },
 	'plan_check>interviewer': { path: 'M504,128 L568,128', label: 'valid', labelX: 536, labelY: 110 },
