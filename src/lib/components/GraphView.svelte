@@ -109,6 +109,7 @@
 			{nodeTypes}
 			{edgeTypes}
 			initialViewport={{ x: 0, y: 0, zoom: 1 }}
+			proOptions={{ hideAttribution: true }}
 			minZoom={1}
 			maxZoom={1}
 			translateExtent={[

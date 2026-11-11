@@ -20,6 +20,14 @@
 	import type { NodeId } from '$lib/server/api/types';
 	import { initialRunState, reduceRun } from '$lib/stores/graph';
 	import { createRunConnection, type ConnectionStatus } from '$lib/stores/run-stream';
+	import {
+		connectionAlertText,
+		isRunEnded,
+		liveStatusText,
+		showConnectionAlert,
+		switchMode,
+		type ViewMode
+	} from '$lib/stores/run-view';
 	import EventList from './EventList.svelte';
 	import NodeDetail from './NodeDetail.svelte';
 	import type { PageProps } from './$types';
@@ -31,9 +39,7 @@
 	let events = $state.raw<RunEvent[]>([]);
 	let connection = $state<ConnectionStatus>('connecting');
 	// Live for a running run, else Replay at the last event; the effect below resets it per run.
-	let mode = $state<'live' | 'replay'>(
-		untrack(() => data.run.status) === 'running' ? 'live' : 'replay'
-	);
+	let mode = $state<ViewMode>(untrack(() => data.run.status) === 'running' ? 'live' : 'replay');
 	/** Events shown in Replay; null follows the newest. */
 	let position = $state<number | null>(null);
 	let playing = $state(false);
@@ -45,12 +51,10 @@
 	const shownCount = $derived(mode === 'live' ? events.length : (position ?? events.length));
 	const shown = $derived(events.slice(0, shownCount));
 	const run = $derived(reduceRun(initial, shown));
-	const ended = $derived(data.run.status !== 'running' || full.status !== 'running');
+	const ended = $derived(isRunEnded(data.run.status, full.status, connection));
 	const lastSeq = $derived(events.at(-1)?.seq ?? data.run.last_seq);
 	const detailId = $derived(pinned ?? run.activeNodeId ?? 'planner');
-	const loading = $derived(
-		events.length === 0 && connection !== 'lost' && connection !== 'reconnecting'
-	);
+	const loading = $derived(events.length === 0 && !showConnectionAlert(connection));
 
 	const backHref = $derived(
 		data.from
@@ -108,11 +112,11 @@
 		return () => clearInterval(timer);
 	});
 
-	function setMode(next: 'live' | 'replay') {
-		if (next === 'live' && ended) return;
-		mode = next;
+	function setMode(requested: ViewMode) {
+		const next = switchMode(requested, { ended, eventCount: events.length });
+		if (!next) return;
+		({ mode, position } = next);
 		playing = false;
-		position = next === 'replay' ? events.length : null;
 	}
 
 	function seek(to: number) {
@@ -249,42 +253,45 @@
 			{/if}
 
 			{#if mode === 'replay'}
-				<div class="flex flex-wrap items-center gap-2">
-					<button
-						type="button"
-						aria-label="First event"
-						class={iconButton}
-						disabled={shownCount <= 1}
-						onclick={() => seek(1)}><SkipBack size={16} aria-hidden="true" /></button
-					>
-					<button
-						type="button"
-						aria-label="Previous event"
-						class={iconButton}
-						disabled={shownCount <= 1}
-						onclick={() => seek(shownCount - 1)}
-						><ChevronLeft size={16} aria-hidden="true" /></button
-					>
-					<button
-						type="button"
-						aria-label={playing ? 'Pause' : 'Play'}
-						disabled={events.length === 0}
-						onclick={togglePlay}
-						class="inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-brand text-card hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:bg-subtle disabled:text-helper"
-					>
-						{#if playing}<Pause size={16} aria-hidden="true" />{:else}<Play
-								size={16}
-								aria-hidden="true"
-							/>{/if}
-					</button>
-					<button
-						type="button"
-						aria-label="Next event"
-						class={iconButton}
-						disabled={shownCount >= events.length}
-						onclick={() => seek(shownCount + 1)}
-						><ChevronRight size={16} aria-hidden="true" /></button
-					>
+				<div class="flex flex-wrap items-center gap-3">
+					<div class="flex items-center gap-1">
+						<button
+							type="button"
+							aria-label="First event"
+							class={iconButton}
+							disabled={shownCount <= 1}
+							onclick={() => seek(1)}><SkipBack size={18} aria-hidden="true" /></button
+						>
+						<button
+							type="button"
+							aria-label="Previous event"
+							class={iconButton}
+							disabled={shownCount <= 1}
+							onclick={() => seek(shownCount - 1)}
+							><ChevronLeft size={18} aria-hidden="true" /></button
+						>
+						<button
+							type="button"
+							aria-label={playing ? 'Pause' : 'Play'}
+							disabled={events.length === 0}
+							onclick={togglePlay}
+							class="inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-brand text-card hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:bg-subtle disabled:text-helper"
+						>
+							{#if playing}<Pause size={16} fill="currentColor" aria-hidden="true" />{:else}<Play
+									size={16}
+									fill="currentColor"
+									aria-hidden="true"
+								/>{/if}
+						</button>
+						<button
+							type="button"
+							aria-label="Next event"
+							class={iconButton}
+							disabled={shownCount >= events.length}
+							onclick={() => seek(shownCount + 1)}
+							><ChevronRight size={18} aria-hidden="true" /></button
+						>
+					</div>
 					<label class="sr-only" for="replay-position">Replay position</label>
 					<input
 						id="replay-position"
@@ -306,21 +313,13 @@
 				</div>
 			{:else}
 				<p role="status" class="text-caption text-muted">
-					{#if connection === 'reconnecting'}
-						Reconnecting from event #{lastSeq}…
-					{:else if connection === 'lost'}
-						Disconnected at event #{lastSeq}
-					{:else if full.status !== 'running'}
-						The run ended at event #{lastSeq}. Switch to Replay to step through it.
-					{:else}
-						Receiving events · last event #{lastSeq}
-					{/if}
+					{liveStatusText(connection, ended, lastSeq)}
 				</p>
 			{/if}
 		</div>
 	</header>
 
-	{#if mode === 'live' && (connection === 'lost' || reconnecting)}
+	{#if showConnectionAlert(connection)}
 		<div
 			role="alert"
 			class="flex flex-wrap items-center gap-3 border-b border-warning bg-card px-6 py-3 text-body-sm"
@@ -328,7 +327,7 @@
 			<span class="-mx-6 -my-3 flex flex-1 flex-wrap items-center gap-3 bg-warning/10 px-6 py-3">
 				<WifiOff size={16} aria-hidden="true" class="shrink-0 text-warning-text" />
 				<span class="min-w-0 flex-1 text-body">
-					Live updates stopped at event #{lastSeq}. Reconnect to load the events after it.
+					{connectionAlertText(mode, lastSeq)}
 				</span>
 				<Button size="sm" loading={reconnecting} onclick={() => reconnect?.()}>
 					{reconnecting ? 'Reconnecting…' : 'Reconnect'}

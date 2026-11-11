@@ -59,32 +59,34 @@ export const shortModel = (model: string) => model.slice(model.lastIndexOf('/') 
 export type EdgeGeometry = { path: string; label: string; labelX: number; labelY: number };
 
 // Top row: y 96–160, thirds at 117/128/139. Bottom row: y 288–352, thirds at 309/320/331.
+// Each label sits beside its line so the line and arrowhead stay visible: centred 18px above a
+// horizontal segment, 18px below the two lower-third return lines, and right of the verdict line.
 export const EDGE_GEOMETRY: Record<string, EdgeGeometry> = {
-	'planner>plan_check': { path: 'M240,117 L304,117', label: 'planned', labelX: 272, labelY: 78 },
-	'plan_check>planner': { path: 'M304,139 L240,139', label: 'invalid', labelX: 272, labelY: 178 },
-	'plan_check>interviewer': { path: 'M504,128 L568,128', label: 'valid', labelX: 536, labelY: 128 },
-	'interviewer>judge': { path: 'M768,128 L832,128', label: 'answer', labelX: 800, labelY: 128 },
+	'planner>plan_check': { path: 'M240,117 L304,117', label: 'planned', labelX: 272, labelY: 99 },
+	'plan_check>planner': { path: 'M304,139 L240,139', label: 'invalid', labelX: 272, labelY: 157 },
+	'plan_check>interviewer': { path: 'M504,128 L568,128', label: 'valid', labelX: 536, labelY: 110 },
+	'interviewer>judge': { path: 'M768,128 L832,128', label: 'answer', labelX: 800, labelY: 110 },
 	'interviewer>interviewer': {
 		path: 'M628,96 L628,52 L708,52 L708,96',
 		label: 'retry',
 		labelX: 668,
-		labelY: 52
+		labelY: 34
 	},
-	'judge>guard': { path: 'M932,160 L932,288', label: 'verdict', labelX: 932, labelY: 206 },
+	'judge>guard': { path: 'M932,160 L932,288', label: 'verdict', labelX: 971, labelY: 224 },
 	'guard>interviewer': {
 		path: 'M872,288 L872,240 L668,240 L668,160',
 		label: 'follow_up · next_topic',
 		labelX: 770,
-		labelY: 240
+		labelY: 222
 	},
-	'guard>scorer': { path: 'M832,320 L768,320', label: 'finish', labelX: 800, labelY: 320 },
-	'scorer>evidence_check': { path: 'M568,309 L504,309', label: 'scored', labelX: 536, labelY: 270 },
-	'evidence_check>scorer': { path: 'M504,331 L568,331', label: 'retry', labelX: 536, labelY: 370 },
+	'guard>scorer': { path: 'M832,320 L768,320', label: 'finish', labelX: 800, labelY: 302 },
+	'scorer>evidence_check': { path: 'M568,309 L504,309', label: 'scored', labelX: 536, labelY: 291 },
+	'evidence_check>scorer': { path: 'M504,331 L568,331', label: 'retry', labelX: 536, labelY: 349 },
 	'evidence_check>recruiter_gate': {
 		path: 'M304,320 L240,320',
 		label: 'scored',
 		labelX: 272,
-		labelY: 320
+		labelY: 302
 	}
 };
 
