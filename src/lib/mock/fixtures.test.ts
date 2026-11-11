@@ -185,7 +185,12 @@ describe('run replay data', () => {
 			{ node: 'scorer', error: 'timeout', will_retry: true },
 			{ node: 'scorer', error: 'timeout', will_retry: false }
 		]);
-		expect(events.at(-1)?.data).toEqual({ error: 'scorer_unavailable' });
+		const skips = events.flatMap((e) =>
+			e.event === 'node.skipped' ? [{ node: e.node_id, ...e.data }] : []
+		);
+		expect(skips).toEqual([{ node: 'evidence_check', reason: 'run_failed' }]);
+		// failScoring in the server's internal/graph/session.go ends the run with this code.
+		expect(events.at(-1)?.data).toEqual({ error: 'scoring_failed' });
 	});
 
 	it('follows §6.3 when the final evidence check still fails', () => {

@@ -595,7 +595,7 @@
 		"node_id": null,
 		"attempt": null,
 		"data": {
-			"error": "scorer_unavailable"
+			"error": "scoring_failed"
 		}
 	}
 ]
