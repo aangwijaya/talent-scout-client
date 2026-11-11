@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
 vi.mock('$app/state', () => state);
 vi.mock('$app/paths', () => ({ resolve: (route: string) => route.replace('/(recruiter)', '') }));
 
-const { default: Layout } = await import('./+layout.svelte');
+const { default: Layout } = await import('../+layout.svelte');
 
 const children = createRawSnippet(() => ({ render: () => '<p>child</p>' }));
 
