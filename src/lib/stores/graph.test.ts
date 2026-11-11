@@ -184,7 +184,8 @@ describe('manual interviewer retry (server#9)', () => {
 	it('takes the self-loop edge and makes it the latest', () => {
 		const state = replayUntil(
 			MOCK_MANUAL_RETRY_RUN_ID,
-			(e) => e.event === 'edge.traversed' && e.data.from === 'interviewer' && e.data.to === 'interviewer'
+			(e) =>
+				e.event === 'edge.traversed' && e.data.from === 'interviewer' && e.data.to === 'interviewer'
 		);
 		expect(state.latestEdgeId).toBe('interviewer>interviewer');
 		expect(state.edges.find((edge) => edge.id === 'interviewer>interviewer')).toMatchObject({

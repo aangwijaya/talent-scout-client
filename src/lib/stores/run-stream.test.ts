@@ -99,10 +99,16 @@ describe('createRunConnection', () => {
 	it('ignores replayed events it already has after a reconnect', async () => {
 		const { connection, events } = setup();
 		connection.open('t', 0);
-		latest().emit('run.started', { ...envelope(1), data: { session_id: 's', nodes: [], edges: [] } });
+		latest().emit('run.started', {
+			...envelope(1),
+			data: { session_id: 's', nodes: [], edges: [] }
+		});
 		latest().emit('error');
 		await connection.reconnect();
-		latest().emit('run.started', { ...envelope(1), data: { session_id: 's', nodes: [], edges: [] } });
+		latest().emit('run.started', {
+			...envelope(1),
+			data: { session_id: 's', nodes: [], edges: [] }
+		});
 		expect(events).toHaveLength(1);
 	});
 

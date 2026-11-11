@@ -180,7 +180,7 @@
 					</a>
 					{#if runHref}
 						<a
-							href={runHref}
+							href="{runHref}?from={application.id}"
 							class="inline-flex min-h-11 items-center gap-1.5 text-brand hover:underline lg:min-h-6"
 						>
 							<Network size={16} aria-hidden="true" /> View graph run
@@ -377,7 +377,7 @@
 			</p>
 			{#if runHref}
 				<a
-					href={runHref}
+					href="{runHref}?from={application.id}"
 					class="mt-2 inline-flex min-h-6 text-body-sm font-medium text-brand hover:underline"
 				>
 					See where it failed in the graph run →
@@ -393,7 +393,7 @@
 			</p>
 			{#if runHref}
 				<a
-					href={runHref}
+					href="{runHref}?from={application.id}"
 					class="inline-flex min-h-6 items-center text-body-sm font-medium text-brand hover:underline"
 				>
 					Watch the graph live →

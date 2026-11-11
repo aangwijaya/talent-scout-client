@@ -67,7 +67,11 @@ export const NODE_IDS = [
 	'recruiter_gate'
 ] as const satisfies readonly NodeId[];
 
-const RETRY_PATHS = new Set(['plan_check>planner', 'interviewer>interviewer', 'evidence_check>scorer']);
+const RETRY_PATHS = new Set([
+	'plan_check>planner',
+	'interviewer>interviewer',
+	'evidence_check>scorer'
+]);
 
 export const edgeId = (from: NodeId, to: NodeId) => `${from}>${to}`;
 
@@ -108,7 +112,8 @@ export function initialRunState(run: Pick<GraphRun, 'session_id' | 'nodes' | 'ed
 		status: 'running',
 		error: null,
 		nodes,
-		edges: run.edges.map(({ from, to }) => edgeState(from, to)),
+		// The REST schema types edge ends as plain strings; they are node ids (docs/API.md).
+		edges: run.edges.map(({ from, to }) => edgeState(from as NodeId, to as NodeId)),
 		latestEdgeId: null,
 		activeNodeId: null,
 		lastSeq: 0,
@@ -199,7 +204,9 @@ export function applyRunEvent(state: RunState, event: RunEvent): RunState {
 			const { from, to, label } = event.data;
 			const id = edgeId(from, to);
 			next.edges = state.edges.some((edge) => edge.id === id)
-				? state.edges.map((edge) => (edge.id === id ? { ...edge, taken: true, lastLabel: label } : edge))
+				? state.edges.map((edge) =>
+						edge.id === id ? { ...edge, taken: true, lastLabel: label } : edge
+					)
 				: [...state.edges, { ...edgeState(from, to), taken: true, lastLabel: label }];
 			next.latestEdgeId = id;
 			if (to === 'recruiter_gate') patch(to, { visual: 'gate' });

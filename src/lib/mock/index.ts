@@ -82,7 +82,10 @@ function judgeOutage(): RunEvent[] {
 	const judge = at('node.started', judgeIndex);
 	const verdict = find('edge.traversed', (e) => e.data.from === 'judge');
 	const guardIndex = find('node.started', (e) => e.node_id === 'guard');
-	const guardDone = at('node.completed', find('node.completed', (e) => e.node_id === 'guard'));
+	const guardDone = at(
+		'node.completed',
+		find('node.completed', (e) => e.node_id === 'guard')
+	);
 	const followUp = find('edge.traversed', (e) => e.data.from === 'guard');
 	const topic = at('topic.changed', find('topic.changed'));
 	return renumber(MOCK_JUDGE_OUTAGE_RUN_ID, [

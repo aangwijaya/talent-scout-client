@@ -216,7 +216,10 @@ describe('run replay data', () => {
 
 	it('replays a manual interviewer retry over the self-loop edge (server#9)', () => {
 		const success = compact(mockRunEvents[MOCK_RUN_ID]);
-		const resume = success.indexOf('node.started(interviewer#1)', success.indexOf('edge guard>interviewer follow_up'));
+		const resume = success.indexOf(
+			'node.started(interviewer#1)',
+			success.indexOf('edge guard>interviewer follow_up')
+		);
 		expect(compact(mockRunEvents[MOCK_MANUAL_RETRY_RUN_ID])).toEqual([
 			...success.slice(0, resume),
 			'node.started(interviewer#1)',
