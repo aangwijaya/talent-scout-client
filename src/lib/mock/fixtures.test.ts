@@ -2,6 +2,8 @@ import type { RunEvent, StreamEvent } from '$lib/events';
 import { applications, graphRunSnapshot, jobs } from '$lib/server/api/fixtures';
 import { describe, expect, it } from 'vitest';
 import {
+	MOCK_JUDGE_OUTAGE_RUN_ID,
+	MOCK_MANUAL_RETRY_RUN_ID,
 	MOCK_NEEDS_MANUAL_RUN_ID,
 	MOCK_NODE_FAILED_RUN_ID,
 	MOCK_PLANNER_FAILED_RUN_ID,
@@ -186,6 +188,53 @@ describe('run replay data', () => {
 			'run.completed'
 		]);
 		expect(events.at(-1)?.data).toMatchObject({ needs_manual_count: 1 });
+	});
+
+	it('follows §6.3 for the judge exception: the run goes on with the default verdict', () => {
+		const success = compact(mockRunEvents[MOCK_RUN_ID]);
+		const events = mockRunEvents[MOCK_JUDGE_OUTAGE_RUN_ID];
+		expect(compact(events)).toEqual([
+			...planOk,
+			...interviewerTurn,
+			'node.started(judge#1)',
+			'node.failed(judge#1)',
+			'node.started(judge#2)',
+			'node.failed(judge#2)',
+			'edge judge>guard verdict',
+			...node('guard'),
+			'topic.changed(guard#1)',
+			'edge guard>interviewer next_topic',
+			...success.slice(success.indexOf('edge guard>interviewer follow_up') + 1)
+		]);
+		const failures = events.flatMap((e) => (e.event === 'node.failed' ? [e.data] : []));
+		expect(failures).toEqual([
+			{ error: 'timeout', will_retry: true },
+			{ error: 'timeout', will_retry: false }
+		]);
+		expect(events.at(-1)?.event).toBe('run.completed');
+	});
+
+	it('replays a manual interviewer retry over the self-loop edge (server#9)', () => {
+		const success = compact(mockRunEvents[MOCK_RUN_ID]);
+		const resume = success.indexOf('node.started(interviewer#1)', success.indexOf('edge guard>interviewer follow_up'));
+		expect(compact(mockRunEvents[MOCK_MANUAL_RETRY_RUN_ID])).toEqual([
+			...success.slice(0, resume),
+			'node.started(interviewer#1)',
+			'node.failed(interviewer#1)',
+			'node.started(interviewer#2)',
+			'node.failed(interviewer#2)',
+			'edge interviewer>interviewer retry',
+			...success.slice(resume)
+		]);
+	});
+
+	it('lists the interviewer self-loop in every run.started', () => {
+		for (const events of Object.values(mockRunEvents)) {
+			const started = events[0];
+			if (started.event !== 'run.started') expect.unreachable('a run starts with run.started');
+			expect(started.data.edges).toContainEqual({ from: 'interviewer', to: 'interviewer' });
+			expect(started.data.edges).toHaveLength(11);
+		}
 	});
 
 	it('never emits node events for the human gate', () => {
