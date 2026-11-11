@@ -18,6 +18,7 @@ export const MOCK_TOPIC_ID = '2b7e9c10-4f6a-4d28-8e13-7c9a1d5f3e20';
 
 export const MOCK_JUDGE_OUTAGE_RUN_ID = '5b7d9f1a-2c4e-4a6b-8d0f-9a1c3e5b7d70';
 export const MOCK_MANUAL_RETRY_RUN_ID = '9d1f3b5c-7e9a-4c2d-b4f6-0b2d4f6a8c80';
+export const MOCK_PLANNER_RETRY_RUN_ID = '3e5a7c9d-1f2b-4d6e-a8c0-2e4a6c8d0f90';
 
 /**
  * server#9 added the interviewer self-loop (the applicant's manual retry) to `run.started.edges`,
@@ -152,6 +153,45 @@ function manualRetry(): RunEvent[] {
 	]);
 }
 
+/**
+ * §6.4 planner sequence: the planner fails its transport retry, the applicant presses retry, and
+ * the planner runs again over its self-loop at attempt 3 of 4. The recovered planner continues
+ * into plan_check, which reuses attempt 3; the interview then runs as in the successful run.
+ */
+function plannerRetry(): RunEvent[] {
+	const started = successRun[0] as EventOf<'run.started'>;
+	const planner = at(
+		'node.started',
+		find('node.started', (e) => e.node_id === 'planner')
+	);
+	const planned = find('edge.traversed', (e) => e.data.from === 'planner');
+	const valid = find('edge.traversed', (e) => e.data.from === 'plan_check');
+	const atAttempt3 = <E extends RunEvent>(event: E): E =>
+		event.node_id === null ? event : { ...event, attempt: 3 };
+	return renumber(MOCK_PLANNER_RETRY_RUN_ID, [
+		{
+			...started,
+			data: {
+				...started.data,
+				edges: [{ from: 'planner', to: 'planner' }, ...started.data.edges]
+			}
+		},
+		planner,
+		failed(planner, 1, true),
+		{ ...planner, attempt: 2 },
+		failed(planner, 2, false),
+		{
+			...planner,
+			event: 'loop.retry',
+			attempt: 3,
+			data: { attempt: 3, max_attempts: 4, reason: 'llm_unavailable', feedback: '' }
+		},
+		{ ...at('edge.traversed', planned), data: { from: 'planner', to: 'planner', label: 'retry' } },
+		...successRun.slice(1, valid).map(atAttempt3),
+		...successRun.slice(valid)
+	]);
+}
+
 /** Replay data per run, in the order of docs/EVENTS.md §6. */
 export const mockRunEvents: Readonly<Record<string, readonly RunEvent[]>> = {
 	[MOCK_RUN_ID]: successRun,
@@ -160,7 +200,8 @@ export const mockRunEvents: Readonly<Record<string, readonly RunEvent[]>> = {
 	[MOCK_NODE_FAILED_RUN_ID]: asRunEvents(nodeFailed),
 	[MOCK_RUNNING_RUN_ID]: asRunEvents(running),
 	[MOCK_JUDGE_OUTAGE_RUN_ID]: judgeOutage(),
-	[MOCK_MANUAL_RETRY_RUN_ID]: manualRetry()
+	[MOCK_MANUAL_RETRY_RUN_ID]: manualRetry(),
+	[MOCK_PLANNER_RETRY_RUN_ID]: plannerRetry()
 };
 
 /** The transcript of the successful run: opening, answer, follow-up, answer. */

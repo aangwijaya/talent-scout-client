@@ -279,9 +279,10 @@ describe('run replay data', () => {
 			'edge plan_check>interviewer valid',
 			...success.slice(planOk.length)
 		]);
-		expect(
-			events.flatMap((e) => (e.event === 'node.failed' ? [e.data.will_retry] : []))
-		).toEqual([true, false]);
+		expect(events.flatMap((e) => (e.event === 'node.failed' ? [e.data.will_retry] : []))).toEqual([
+			true,
+			false
+		]);
 		const retry = events.find((e) => e.event === 'loop.retry');
 		expect(retry?.data).toMatchObject({ attempt: 3, max_attempts: 4, reason: 'llm_unavailable' });
 		expect(events.at(-1)?.event).toBe('run.completed');
