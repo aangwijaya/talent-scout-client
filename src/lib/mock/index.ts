@@ -118,11 +118,14 @@ function judgeOutage(): RunEvent[] {
 /**
  * server#9: the interviewer fails its transport retry, the applicant presses retry
  * (`POST /sessions/{token}/retry`), and the interviewer runs again over its self-loop.
+ * As in the server's `handleInterviewerError`, the retry continues the attempt count (3 of 4).
  */
 function manualRetry(): RunEvent[] {
 	const followUp = find('edge.traversed', (e) => e.data.from === 'guard');
 	const index = find('node.started', (e) => e.node_id === 'interviewer', followUp);
 	const started = at('node.started', index);
+	const message = at('message.completed', index + 1);
+	const completed = at('node.completed', index + 2);
 	return renumber(MOCK_MANUAL_RETRY_RUN_ID, [
 		...successRun.slice(0, index),
 		started,
@@ -130,13 +133,22 @@ function manualRetry(): RunEvent[] {
 		{ ...started, attempt: 2 },
 		failed(started, 2, false),
 		{
+			...started,
+			event: 'loop.retry',
+			attempt: 3,
+			data: { attempt: 3, max_attempts: 4, reason: 'llm_unavailable', feedback: '' }
+		},
+		{
 			...successRun[followUp],
 			event: 'edge.traversed',
 			node_id: null,
 			attempt: null,
 			data: { from: 'interviewer', to: 'interviewer', label: 'retry' }
 		},
-		...successRun.slice(index)
+		{ ...started, attempt: 3 },
+		{ ...message, attempt: 3 },
+		{ ...completed, attempt: 3 },
+		...successRun.slice(index + 3)
 	]);
 }
 

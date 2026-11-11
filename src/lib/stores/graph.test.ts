@@ -209,11 +209,23 @@ describe('manual interviewer retry (server#9)', () => {
 			retryPath: true,
 			lastLabel: 'retry'
 		});
-		expect(state.nodes.interviewer.visual).toBe('failed');
+		expect(state.nodes.interviewer).toMatchObject({
+			visual: 'retry',
+			attempt: 3,
+			maxAttempts: 4,
+			retryBadge: 3,
+			retryReason: 'llm_unavailable'
+		});
 		expect(state.status).toBe('running');
 	});
 
-	it('runs the interviewer again and finishes the run', () => {
+	it('runs the interviewer again at attempt 3 and finishes the run', () => {
+		const rerun = replayUntil(
+			MOCK_MANUAL_RETRY_RUN_ID,
+			(e) => e.event === 'node.completed' && e.node_id === 'interviewer' && e.attempt === 3
+		);
+		expect(rerun.nodes.interviewer).toMatchObject({ visual: 'passed', attempt: 3 });
+
 		const end = replay(MOCK_MANUAL_RETRY_RUN_ID);
 		expect(end.status).toBe('succeeded');
 		expect(end.nodes.interviewer.visual).toBe('passed');

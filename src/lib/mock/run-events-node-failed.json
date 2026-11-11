@@ -461,11 +461,91 @@
 		}
 	},
 	{
-		"event": "node.failed",
+		"event": "node.completed",
 		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
 		"seq": 29,
 		"ts": "2026-11-04T06:31:06Z",
 		"node_id": "judge",
+		"attempt": 1,
+		"data": {
+			"output_summary": "verdict=sufficient",
+			"tokens_in": 820,
+			"tokens_out": 64,
+			"duration_ms": 1430,
+			"cost_usd": 6e-5
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 30,
+		"ts": "2026-11-04T06:31:08Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "judge",
+			"to": "guard",
+			"label": "verdict"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 31,
+		"ts": "2026-11-04T06:31:10Z",
+		"node_id": "guard",
+		"attempt": 1,
+		"data": {
+			"model": null,
+			"input_summary": "verdict and limits"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 32,
+		"ts": "2026-11-04T06:31:12Z",
+		"node_id": "guard",
+		"attempt": 1,
+		"data": {
+			"output_summary": "action=finish",
+			"tokens_in": 0,
+			"tokens_out": 0,
+			"duration_ms": 12,
+			"cost_usd": 0
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 33,
+		"ts": "2026-11-04T06:31:14Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "guard",
+			"to": "scorer",
+			"label": "finish"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 34,
+		"ts": "2026-11-04T06:31:16Z",
+		"node_id": "scorer",
+		"attempt": 1,
+		"data": {
+			"model": "deepseek/deepseek-v4.1-flash",
+			"input_summary": "rubric and transcript"
+		}
+	},
+	{
+		"event": "node.failed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 35,
+		"ts": "2026-11-04T06:31:18Z",
+		"node_id": "scorer",
 		"attempt": 1,
 		"data": {
 			"error": "timeout",
@@ -475,21 +555,21 @@
 	{
 		"event": "node.started",
 		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
-		"seq": 30,
-		"ts": "2026-11-04T06:31:08Z",
-		"node_id": "judge",
+		"seq": 36,
+		"ts": "2026-11-04T06:31:20Z",
+		"node_id": "scorer",
 		"attempt": 2,
 		"data": {
-			"model": "z-ai/glm-5.3-flash",
-			"input_summary": "topic 1: last answer"
+			"model": "deepseek/deepseek-v4.1-flash",
+			"input_summary": "rubric and transcript"
 		}
 	},
 	{
 		"event": "node.failed",
 		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
-		"seq": 31,
-		"ts": "2026-11-04T06:31:10Z",
-		"node_id": "judge",
+		"seq": 37,
+		"ts": "2026-11-04T06:31:22Z",
+		"node_id": "scorer",
 		"attempt": 2,
 		"data": {
 			"error": "timeout",
@@ -499,30 +579,8 @@
 	{
 		"event": "node.skipped",
 		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
-		"seq": 32,
-		"ts": "2026-11-04T06:31:12Z",
-		"node_id": "guard",
-		"attempt": null,
-		"data": {
-			"reason": "run_failed"
-		}
-	},
-	{
-		"event": "node.skipped",
-		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
-		"seq": 33,
-		"ts": "2026-11-04T06:31:14Z",
-		"node_id": "scorer",
-		"attempt": null,
-		"data": {
-			"reason": "run_failed"
-		}
-	},
-	{
-		"event": "node.skipped",
-		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
-		"seq": 34,
-		"ts": "2026-11-04T06:31:16Z",
+		"seq": 38,
+		"ts": "2026-11-04T06:31:24Z",
 		"node_id": "evidence_check",
 		"attempt": null,
 		"data": {
@@ -532,12 +590,12 @@
 	{
 		"event": "run.failed",
 		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
-		"seq": 35,
-		"ts": "2026-11-04T06:31:18Z",
+		"seq": 39,
+		"ts": "2026-11-04T06:31:26Z",
 		"node_id": null,
 		"attempt": null,
 		"data": {
-			"error": "judge_unavailable"
+			"error": "scoring_failed"
 		}
 	}
 ]

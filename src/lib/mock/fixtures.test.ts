@@ -155,7 +155,8 @@ describe('run replay data', () => {
 	});
 
 	it('follows §6.3 for a transport retry and a permanent failure', () => {
-		expect(compact(mockRunEvents[MOCK_NODE_FAILED_RUN_ID])).toEqual([
+		const events = mockRunEvents[MOCK_NODE_FAILED_RUN_ID];
+		expect(compact(events)).toEqual([
 			...planOk,
 			...interviewerTurn,
 			'node.started(judge#1)',
@@ -165,13 +166,31 @@ describe('run replay data', () => {
 			...node('guard'),
 			'edge guard>interviewer follow_up',
 			...interviewerTurn,
-			'node.started(judge#1)',
-			'node.failed(judge#1)',
-			'node.started(judge#2)',
-			'node.failed(judge#2)',
-			...skipped('guard', 'scorer', 'evidence_check'),
+			...node('judge'),
+			'edge judge>guard verdict',
+			...node('guard'),
+			'edge guard>scorer finish',
+			'node.started(scorer#1)',
+			'node.failed(scorer#1)',
+			'node.started(scorer#2)',
+			'node.failed(scorer#2)',
+			...skipped('evidence_check'),
 			'run.failed'
 		]);
+		const failures = events.flatMap((e) =>
+			e.event === 'node.failed' ? [{ node: e.node_id, ...e.data }] : []
+		);
+		expect(failures).toEqual([
+			{ node: 'judge', error: 'timeout', will_retry: true },
+			{ node: 'scorer', error: 'timeout', will_retry: true },
+			{ node: 'scorer', error: 'timeout', will_retry: false }
+		]);
+		const skips = events.flatMap((e) =>
+			e.event === 'node.skipped' ? [{ node: e.node_id, ...e.data }] : []
+		);
+		expect(skips).toEqual([{ node: 'evidence_check', reason: 'run_failed' }]);
+		// failScoring in the server's internal/graph/session.go ends the run with this code.
+		expect(events.at(-1)?.data).toEqual({ error: 'scoring_failed' });
 	});
 
 	it('follows §6.3 when the final evidence check still fails', () => {
@@ -220,15 +239,24 @@ describe('run replay data', () => {
 			'node.started(interviewer#1)',
 			success.indexOf('edge guard>interviewer follow_up')
 		);
-		expect(compact(mockRunEvents[MOCK_MANUAL_RETRY_RUN_ID])).toEqual([
+		const events = mockRunEvents[MOCK_MANUAL_RETRY_RUN_ID];
+		// handleInterviewerError in talent-scout-server: the retry continues after the last
+		// transport attempt, so attempt numbers never repeat.
+		expect(compact(events)).toEqual([
 			...success.slice(0, resume),
 			'node.started(interviewer#1)',
 			'node.failed(interviewer#1)',
 			'node.started(interviewer#2)',
 			'node.failed(interviewer#2)',
+			'loop.retry(interviewer#3)',
 			'edge interviewer>interviewer retry',
-			...success.slice(resume)
+			'node.started(interviewer#3)',
+			'message.completed(interviewer#3)',
+			'node.completed(interviewer#3)',
+			...success.slice(resume + 3)
 		]);
+		const retry = events.find((e) => e.event === 'loop.retry');
+		expect(retry?.data).toMatchObject({ attempt: 3, max_attempts: 4, reason: 'llm_unavailable' });
 	});
 
 	it('lists the interviewer self-loop in every run.started', () => {
