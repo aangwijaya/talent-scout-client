@@ -55,6 +55,19 @@ describe('graph run page', () => {
 		expect(page(MOCK_RUN_ID)).toContain('href="/dashboard/jobs"');
 	});
 
+	it('draws Play filled, 18px ghost icons, tight buttons and wider gaps around the slider', () => {
+		const body = page(MOCK_RUN_ID);
+		const play = body.match(/<button[^>]*aria-label="Play"[\s\S]*?<\/button>/)?.[0] ?? '';
+		expect(play).toMatch(/<svg[^>]*fill="currentColor"/);
+		for (const label of ['First event', 'Previous event', 'Next event']) {
+			const button =
+				body.match(new RegExp(`<button[^>]*aria-label="${label}"[\\s\\S]*?</button>`))?.[0] ?? '';
+			expect(button, label).toMatch(/<svg[^>]*width="18"/);
+		}
+		expect(body).toMatch(/<div class="flex items-center gap-1"[^>]*>\s*<button[^>]*First event/);
+		expect(body).toMatch(/class="flex flex-wrap items-center gap-3"[^>]*>\s*<div[^>]*gap-1/);
+	});
+
 	it('shows the short run id and session id in mono', () => {
 		const body = page(MOCK_RUN_ID);
 		expect(body).toContain(MOCK_RUN_ID.slice(0, 8));

@@ -107,6 +107,22 @@ describe('applyRunEvent', () => {
 		expect(end.costUsd).toBe(last.data.cost_usd);
 	});
 
+	it('takes the run.completed totals even when they differ from the node.completed sums', () => {
+		const events = mockRunEvents[MOCK_RUN_ID];
+		const last = events.at(-1);
+		if (last?.event !== 'run.completed') expect.unreachable();
+		const beforeEnd = replay(MOCK_RUN_ID, events.length - 1);
+		const totals = {
+			total_tokens_in: beforeEnd.tokensIn + 1234,
+			total_tokens_out: beforeEnd.tokensOut + 567,
+			cost_usd: beforeEnd.costUsd + 0.0042
+		};
+		const end = applyRunEvent(beforeEnd, { ...last, data: { ...last.data, ...totals } });
+		expect(end.tokensIn).toBe(totals.total_tokens_in);
+		expect(end.tokensOut).toBe(totals.total_tokens_out);
+		expect(end.costUsd).toBe(totals.cost_usd);
+	});
+
 	it('does not change the state it is given', () => {
 		const before = initial(MOCK_RUN_ID);
 		const copy = structuredClone(before);
