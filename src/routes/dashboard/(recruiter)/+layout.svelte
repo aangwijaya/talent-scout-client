@@ -19,6 +19,9 @@
 			JOBS_ROUTES.includes(navigating.to.route.id)
 	);
 
+	// The graph run page spans the whole window; every other page keeps the 1200px column.
+	const fullWidth = $derived(page.route.id === '/dashboard/(recruiter)/runs/[runId]');
+
 	const touch = 'max-sm:min-h-11 max-sm:min-w-11';
 </script>
 
@@ -61,7 +64,7 @@
 			</form>
 		</nav>
 	</header>
-	<main class="mx-auto max-w-[1200px] p-4 sm:p-6">
+	<main class={fullWidth ? '' : 'mx-auto max-w-[1200px] p-4 sm:p-6'}>
 		{#if loadingTable}
 			<div class="mb-6 flex flex-col gap-2" aria-hidden="true">
 				<span class="block h-7 w-48 rounded-full bg-subtle motion-safe:animate-pulse"></span>

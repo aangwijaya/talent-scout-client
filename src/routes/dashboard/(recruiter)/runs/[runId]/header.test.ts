@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { MOCK_RUN_ID } from '$lib/mock';
-import { mockRunEvents } from '$lib/mock';
+import { MOCK_RUN_ID, mockRunEvents } from '$lib/mock';
 import { graphRunSnapshot } from '$lib/server/api/fixtures';
 import { initialRunState, reduceRun } from '$lib/stores/graph';
 import { receivedSeq, runHeader } from './header';
 
 const snapshot = graphRunSnapshot(MOCK_RUN_ID)!;
 const events = mockRunEvents[MOCK_RUN_ID];
-const at = (count: number) => runHeader(reduceRun(initialRunState(snapshot), events.slice(0, count)));
+const at = (count: number) =>
+	runHeader(reduceRun(initialRunState(snapshot), events.slice(0, count)));
 
 describe('runHeader', () => {
 	it('takes the status and the totals from the same state', () => {
