@@ -1,4 +1,5 @@
-// Event types from docs/EVENTS.md. The EventSource wrapper (sse_token, reconnect) arrives in #10/#14.
+// Event types from docs/EVENTS.md, plus the session and run `EventSource` wrappers. The run
+// stream's manual reconnect lives in `$lib/stores/run-stream.ts`.
 import type {
 	CurrentTopic,
 	FinishReason,

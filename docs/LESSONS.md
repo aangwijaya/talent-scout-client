@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-11 — #8 `no-navigation-without-resolve` only reads the start of `href`
+- **Context:** adding `?from=<applicationId>` to the review page's "View graph run" link
+- **Problem:** building the URL in a template literal (`` `${resolve(…)}?from=${id}` ``) or passing it as a prop failed lint with `svelte/no-navigation-without-resolve`
+- **Cause:** the rule checks only the first part of the attribute value, and it must trace back to a `resolve()` call from `$app/paths`
+- **Lesson:** write `href="{resolve(…)}?from={id}"` (or a `$derived(resolve(…))` first), and pass ids, not hrefs, to child components that render links
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-11 — #7 A reason after a `svelte-ignore` code fails lint
 - **Context:** marking the scrollable transcript region `tabindex="0"`, which svelte-check flags as `a11y_no_noninteractive_tabindex`
 - **Problem:** `<!-- svelte-ignore a11y_no_noninteractive_tabindex: reason -->` silenced svelte-check, but eslint failed with 11 `svelte/no-unused-svelte-ignore` errors
