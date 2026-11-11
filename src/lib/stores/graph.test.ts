@@ -4,6 +4,7 @@ import {
 	MOCK_JUDGE_OUTAGE_RUN_ID,
 	MOCK_MANUAL_RETRY_RUN_ID,
 	MOCK_PLANNER_FAILED_RUN_ID,
+	MOCK_PLANNER_RETRY_RUN_ID,
 	MOCK_RUN_ID,
 	mockRunEvents
 } from '$lib/mock';
@@ -193,6 +194,41 @@ describe('§6.3 judge exception', () => {
 		const end = replay(MOCK_JUDGE_OUTAGE_RUN_ID);
 		expect(end.status).toBe('succeeded');
 		expect(Object.values(end.nodes).some((node) => node.visual === 'skipped')).toBe(false);
+	});
+});
+
+describe('manual planner retry (EVENTS.md §6.4)', () => {
+	const isPlannerLoop = (e: RunEvent) =>
+		e.event === 'edge.traversed' && e.data.from === 'planner' && e.data.to === 'planner';
+
+	it('lights up the planner self-loop and badges the planner', () => {
+		const state = replayUntil(MOCK_PLANNER_RETRY_RUN_ID, isPlannerLoop);
+		expect(state.latestEdgeId).toBe('planner>planner');
+		expect(state.edges.find((edge) => edge.id === 'planner>planner')).toMatchObject({
+			taken: true,
+			lastLabel: 'retry'
+		});
+		expect(state.nodes.planner).toMatchObject({
+			visual: 'retry',
+			attempt: 3,
+			maxAttempts: 4,
+			retryBadge: 3,
+			retryReason: 'llm_unavailable'
+		});
+		expect(state.status).toBe('running');
+	});
+
+	it('runs planner and plan_check at attempt 3, then finishes the run', () => {
+		const planned = replayUntil(
+			MOCK_PLANNER_RETRY_RUN_ID,
+			(e) => e.event === 'node.completed' && e.node_id === 'plan_check'
+		);
+		expect(planned.nodes.planner).toMatchObject({ visual: 'passed', attempt: 3, runs: 3 });
+		expect(planned.nodes.plan_check).toMatchObject({ visual: 'passed', attempt: 3, runs: 1 });
+
+		const end = replay(MOCK_PLANNER_RETRY_RUN_ID);
+		expect(end.status).toBe('succeeded');
+		expect(end.edges.find((edge) => edge.id === 'planner>planner')?.taken).toBe(true);
 	});
 });
 
