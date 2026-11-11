@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { formatCount } from '$lib/components/graph-layout';
+import { formatCost } from '$lib/components/review';
 import { MOCK_RUN_ID, mockRunEvents } from '$lib/mock';
 import { graphRunSnapshot } from '$lib/server/api/fixtures';
 import { initialRunState, reduceRun } from '$lib/stores/graph';
@@ -13,7 +15,13 @@ describe('runHeader', () => {
 	it('takes the status and the totals from the same state', () => {
 		const end = at(events.length);
 		expect(end.status).toBe('succeeded');
-		expect(end.cost).not.toBe('$0.0000');
+		const completed = events.at(-1);
+		if (completed?.event !== 'run.completed')
+			throw new Error('the mock run must end with run.completed');
+		expect(end.cost).toBe(formatCost(completed.data.cost_usd));
+		expect(end.tokens).toBe(
+			`${formatCount(completed.data.total_tokens_in)} in · ${formatCount(completed.data.total_tokens_out)} out`
+		);
 
 		// Stepping the replay back: the badge follows the totals instead of staying Succeeded.
 		const middle = at(Math.floor(events.length / 2));
