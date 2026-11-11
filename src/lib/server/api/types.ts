@@ -33,6 +33,7 @@ export type Decision = Schemas['Decision'];
 export type ApplicationDetail = Schemas['ApplicationDetail'];
 export type CurrentTopic = Schemas['CurrentTopic'];
 export type SessionInfo = Schemas['SessionDetail'];
+export type SessionSummary = Schemas['SessionSummary'];
 export type GraphRun = Schemas['GraphRun'];
 export type LoginResponse = Schemas['LoginResponse'];
 export type SseTokenResponse = Schemas['SSETokenResponse'];

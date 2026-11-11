@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-11 — #7 A reason after a `svelte-ignore` code fails lint
+- **Context:** marking the scrollable transcript region `tabindex="0"`, which svelte-check flags as `a11y_no_noninteractive_tabindex`
+- **Problem:** `<!-- svelte-ignore a11y_no_noninteractive_tabindex: reason -->` silenced svelte-check, but eslint failed with 11 `svelte/no-unused-svelte-ignore` errors
+- **Cause:** the rule reads every word after `svelte-ignore` as another warning code; also, Kit 3 exports `SubmitFunction` from `$app/forms`, not `@sveltejs/kit`
+- **Lesson:** keep `svelte-ignore` comments to codes only and put the reason in a separate comment above; import form types from `$app/forms`
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-10 — #36 A cleared session cookie leaves nothing for the next request to read
 - **Context:** showing "Your session ended" on login only after a 401 or an expired cookie, never on a first visit
 - **Problem:** by the time the browser follows the redirect to login, the cookie is gone, so the login load cannot tell an ended session from a first visit
