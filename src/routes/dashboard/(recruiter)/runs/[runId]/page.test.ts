@@ -68,6 +68,28 @@ describe('graph run page', () => {
 		expect(body).toMatch(/class="flex flex-wrap items-center gap-3"[^>]*>\s*<div[^>]*gap-1/);
 	});
 
+	it('fills the layout without a 100vw breakout', () => {
+		const body = page(MOCK_RUN_ID);
+		expect(body).not.toMatch(/w-screen|50vw|-mt-\d|mb-\[-/);
+	});
+
+	it('shows the header status and totals as skeletons while the events load', () => {
+		const body = page(MOCK_RUN_ID);
+		const header = body.match(/<header[\s\S]*?<\/header>/)?.[0] ?? '';
+		for (const text of ['Running', 'Succeeded', 'Failed', '$0', '0 in']) {
+			expect(header, text).not.toContain(text);
+		}
+		expect(header).toMatch(/aria-hidden="true"[^>]*motion-safe:animate-pulse/);
+	});
+
+	it('numbers the Live status from received events only, not the snapshot', () => {
+		const run = graphRunSnapshot(MOCK_RUNNING_RUN_ID);
+		expect(run?.last_seq).toBeGreaterThan(0);
+		const status =
+			page(MOCK_RUNNING_RUN_ID).match(/<p role="status"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? '';
+		expect(status).not.toContain(`#${run?.last_seq}`);
+	});
+
 	it('shows the short run id and session id in mono', () => {
 		const body = page(MOCK_RUN_ID);
 		expect(body).toContain(MOCK_RUN_ID.slice(0, 8));
