@@ -13,8 +13,6 @@
 	import { resolve } from '$app/paths';
 	import Button from '$lib/components/Button.svelte';
 	import GraphView from '$lib/components/GraphView.svelte';
-	import { formatCount } from '$lib/components/graph-layout';
-	import { formatCost } from '$lib/components/review';
 	import { replayEvents, type RunEvent } from '$lib/events';
 	import { mockRunEvents } from '$lib/mock';
 	import type { NodeId } from '$lib/server/api/types';
@@ -29,6 +27,7 @@
 		type ViewMode
 	} from '$lib/stores/run-view';
 	import EventList from './EventList.svelte';
+	import { receivedSeq, runHeader } from './header';
 	import NodeDetail from './NodeDetail.svelte';
 	import type { PageProps } from './$types';
 
@@ -52,7 +51,8 @@
 	const shown = $derived(events.slice(0, shownCount));
 	const run = $derived(reduceRun(initial, shown));
 	const ended = $derived(isRunEnded(data.run.status, full.status, connection));
-	const lastSeq = $derived(events.at(-1)?.seq ?? data.run.last_seq);
+	const lastSeq = $derived(receivedSeq(events));
+	const header = $derived(runHeader(run));
 	const detailId = $derived(pinned ?? run.activeNodeId ?? 'planner');
 	const loading = $derived(events.length === 0 && !showConnectionAlert(connection));
 
@@ -151,12 +151,13 @@
 		full.startedAt ? `${dateTime.format(new Date(full.startedAt))} UTC` : null
 	);
 	const statusBadge = $derived(
-		full.status === 'running'
+		header.status === 'running'
 			? { label: 'Running', icon: Loader, cls: 'bg-wash text-brand', spin: true }
-			: full.status === 'succeeded'
+			: header.status === 'succeeded'
 				? { label: 'Succeeded', icon: Check, cls: 'bg-success/10 text-success-text', spin: false }
 				: { label: 'Failed', icon: X, cls: 'bg-danger/10 text-danger-text', spin: false }
 	);
+	const skeleton = 'inline-block rounded-full bg-subtle align-middle motion-safe:animate-pulse';
 	const pressed = 'bg-card text-ink shadow-card';
 	const iconButton =
 		'inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-subtle focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-helper';
@@ -164,8 +165,7 @@
 
 <svelte:head><title>Graph run · Talent Scout</title></svelte:head>
 
-<!-- Full width: break out of the layout's 1200px column. -->
-<div class="-mt-4 mb-[-1rem] ml-[calc(50%-50vw)] w-screen sm:-mt-6 sm:mb-[-1.5rem]">
+<div>
 	<header class="border-b border-line bg-card px-6 pt-3 pb-4">
 		<a
 			href={backHref}
@@ -179,19 +179,23 @@
 				<div class="flex flex-wrap items-center gap-2">
 					<h1 class="text-heading-sm font-semibold text-ink">Graph run</h1>
 					<span class="font-mono text-body-sm text-muted">{data.run.id.slice(0, 8)}</span>
-					<span
-						class={[
-							'inline-flex items-center gap-1 rounded-full px-2 py-1 text-caption font-medium',
-							statusBadge.cls
-						]}
-					>
-						<statusBadge.icon
-							size={12}
-							aria-hidden="true"
-							class={statusBadge.spin ? 'motion-safe:animate-spin' : ''}
-						/>
-						{statusBadge.label}
-					</span>
+					{#if loading}
+						<span aria-hidden="true" class={[skeleton, 'h-6 w-20']}></span>
+					{:else}
+						<span
+							class={[
+								'inline-flex items-center gap-1 rounded-full px-2 py-1 text-caption font-medium',
+								statusBadge.cls
+							]}
+						>
+							<statusBadge.icon
+								size={12}
+								aria-hidden="true"
+								class={statusBadge.spin ? 'motion-safe:animate-spin' : ''}
+							/>
+							{statusBadge.label}
+						</span>
+					{/if}
 				</div>
 				<p class="mt-1 text-body-sm text-muted">
 					Session <span class="font-mono">{data.run.session_id.slice(0, 8)}</span>{#if startedLabel}
@@ -201,12 +205,16 @@
 			<dl class="flex flex-wrap gap-x-6 gap-y-1 text-body-sm">
 				<div class="flex gap-1.5">
 					<dt class="text-muted">Cost</dt>
-					<dd class="font-mono text-ink">{formatCost(run.costUsd)}</dd>
+					<dd class="font-mono text-ink">
+						{#if loading}<span aria-hidden="true" class={[skeleton, 'h-4 w-16']}
+							></span>{:else}{header.cost}{/if}
+					</dd>
 				</div>
 				<div class="flex gap-1.5">
 					<dt class="text-muted">Tokens</dt>
 					<dd class="font-mono text-ink">
-						{formatCount(run.tokensIn)} in · {formatCount(run.tokensOut)} out
+						{#if loading}<span aria-hidden="true" class={[skeleton, 'h-4 w-28']}
+							></span>{:else}{header.tokens}{/if}
 					</dd>
 				</div>
 			</dl>
