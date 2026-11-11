@@ -16,6 +16,10 @@ const { default: Page } = await import('./+page.svelte');
 
 type Ids = keyof typeof MOCK_APPLICATION_IDS;
 
+/** The graph page links back to the review through `?from=`. */
+const runLink = (detail: ApplicationDetail) =>
+	`href="/dashboard/runs/${detail.graph_run?.id}?from=${detail.application.id}"`;
+
 function fixture(id: Ids): ApplicationDetail {
 	const found = applications.find((d) => d.application.id === MOCK_APPLICATION_IDS[id]);
 	if (!found) throw new Error(id);
@@ -39,7 +43,7 @@ describe('review page, scored application', () => {
 		expect(body).toContain('Session completed · 2 questions · 15 min');
 		expect(body).toContain('$0.0041');
 		expect(body).toContain(`href="/dashboard/applications/${detail.application.id}/cv"`);
-		expect(body).toContain(`href="/dashboard/runs/${detail.graph_run?.id}"`);
+		expect(body).toContain(runLink(detail));
 		expect(body).toContain('Shortlist');
 		expect(body).toContain('Reject');
 		expect(body).not.toContain('Get invite link');
@@ -141,7 +145,7 @@ describe('review page, other states', () => {
 		expect(body).toContain('role="alert"');
 		expect(body).toContain('The screening could not finish');
 		expect(body).toContain("Adi's screening ended with a system error");
-		expect(body).toContain(`href="/dashboard/runs/${detail.graph_run?.id}"`);
+		expect(body).toContain(runLink(detail));
 		expect(body).toContain('Get invite link');
 		expect(body).toContain('Session failed · ');
 		expect(body).not.toContain("The screening hasn't started");

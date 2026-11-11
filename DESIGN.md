@@ -62,7 +62,7 @@ All contrast ratios use the WCAG 2.x formula, against `#ffffff` unless another b
 | **passed** (`succeeded`, `check.passed`) | node finished/valid | `success` | `success/10` | `success-text` "Passed" | `check` | — |
 | **failed** (`failed`, `check.failed`) | node failed | `danger` | `danger/10` | `danger-text` "Failed" | `x` | — |
 | **retry** (`loop.retry`) | node retried | `warning` 2px dashed | `warning/10` | `warning-text` "Retry 2/3" | `rotate-ccw` | attempt badge in the corner |
-| **skipped** | node `skipped` | `line` dashed | `subtle` | `muted` "Skipped" | `minus` | No opacity on the label (`helper` on `subtle` fails AA) |
+| **skipped** | node `skipped` | `helper` 1px dashed | `subtle` | `muted` "Skipped" | `minus` | No opacity on the label (`helper` on `subtle` fails AA). [adapted 2026-11-11]: a `line` dashed border on `subtle` vanishes on the `wash` canvas |
 
 The color-to-status mapping above is [adapted], derived from the *Status Dot* component [src]. Domain statuses use the same scheme:
 - Application: `review`, `in_session` = brand; `shortlisted` = success; `rejected`, `failed` = danger; `scoring` = warning; `applied`, `invited` = idle.
@@ -169,12 +169,13 @@ The 16px size token is `text-base`, not `text-body`: `text-body` is the color fr
   - Evidence: a `<blockquote>` with a 2px `brand` left border, `wash` fill, `body` text, no italics [adapted, for readability], ending with a "Jump to message →" link. When clicked, it scrolls to the message and highlights it (`bg-warning/10`, `warning` outline for 2 seconds).
   - `needs_manual`: warning badge "Needs manual review", the score is replaced by "—".
 - **Graph node** (`@xyflow/svelte` custom node). 200×64px, `rounded-panel` 16px, 1px border, `shadow-card`.
-  - Content: status icon + node name (`body-sm` 600) + type (`caption` `helper`: splitter/worker/gate/code/human gate) + model (mono 12px, truncated).
+  - Content: status icon + node name (`body-sm` 600) + type (`caption` `muted`: splitter/worker/gate/code/human gate) + model (mono 12px, truncated). Type text is `muted`, not `helper`, because `helper` fails AA on the tinted node fills [adapted 2026-11-11].
   - Colors per §2.2. Code nodes are distinguished by a thin dashed border and a `code` icon. The human gate uses the `user-check` icon.
 - **Graph edge.**
-  - Default: `line` 1.5px.
-  - On `edge.traversed`: `brand` 2px, 600ms dash animation, then back to `brand-soft` 50% as a trail.
-  - Retry edge: `warning` dashed.
+  - Default (not taken yet): `helper` 1.5px. `line` is 1.1:1 on `wash` and disappears [adapted 2026-11-11].
+  - Taken: `brand-soft` 2px at full strength. At 50% it would be lighter than an untaken edge [adapted 2026-11-11].
+  - The latest `edge.traversed`: `brand` 2.5px with the 600ms dash animation (off under reduced motion).
+  - Retry paths (`invalid`, both `retry` edges): dashed 6 4, `warning` until taken, then the colours above.
   - Labels (`follow_up`, `retry`, …) are `caption` chips on `card`.
 - **Badge.** `rounded-full`, `caption` 12px/500, 4px 8px padding, status tint fill + `-text` variant text + 6px dot [src Status Dot 4–6px].
 - **Empty state.** 32px lucide icon in `helper`, `subheading` title, 1 `muted` sentence, 1 action. Example: "No applicants yet. Copy apply link".

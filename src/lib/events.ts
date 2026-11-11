@@ -1,4 +1,5 @@
-// Event types from docs/EVENTS.md. The EventSource wrapper (sse_token, reconnect) arrives in #10/#14.
+// Event types from docs/EVENTS.md, plus the session and run `EventSource` wrappers. The run
+// stream's manual reconnect lives in `$lib/stores/run-stream.ts`.
 import type {
 	CurrentTopic,
 	FinishReason,
@@ -163,6 +164,67 @@ export function openSessionStream(
 		});
 	}
 	return { ready, close: () => source.close() };
+}
+
+const RUN_EVENT_NAMES = [
+	'run.started',
+	'node.started',
+	'node.completed',
+	'node.failed',
+	'node.skipped',
+	'check.passed',
+	'check.failed',
+	'loop.retry',
+	'edge.traversed',
+	'topic.changed',
+	'message.completed',
+	'run.completed',
+	'run.failed'
+] as const satisfies readonly RunEvent['event'][];
+
+/** `GET /graph-runs/{runId}/events?sse_token=&since_seq=` (docs/EVENTS.md §4). */
+export function runStreamUrl(streamUrl: string, sseToken: string, sinceSeq: number): string {
+	const url = new URL(streamUrl);
+	url.searchParams.set('sse_token', sseToken);
+	url.searchParams.set('since_seq', String(sinceSeq));
+	return url.toString();
+}
+
+/**
+ * Opens the recruiter run stream. Any connection error closes it: the `sse_token` is single-use
+ * at connect time, so the browser's own retry would fail with 401 (§4). Closes after
+ * `run.completed`/`run.failed`.
+ */
+export function openRunStream(
+	url: string,
+	{
+		onOpen,
+		onEvent,
+		onConnectionError
+	}: { onOpen?: () => void; onEvent: (event: RunEvent) => void; onConnectionError: () => void }
+): () => void {
+	const source = new EventSource(url);
+	let ended = false;
+	source.addEventListener('open', () => onOpen?.());
+	source.addEventListener('error', () => {
+		source.close();
+		if (!ended) onConnectionError();
+	});
+	for (const name of RUN_EVENT_NAMES) {
+		source.addEventListener(name, (raw) => {
+			if (!(raw instanceof MessageEvent) || typeof raw.data !== 'string') return;
+			const event = { ...JSON.parse(raw.data), event: name } as RunEvent;
+			if (name === 'run.completed' || name === 'run.failed') {
+				ended = true;
+				source.close();
+			}
+			onEvent(event);
+		});
+	}
+	return () => {
+		ended = true;
+		source.close();
+	};
 }
 
 function defaultDelayMs(): number {
