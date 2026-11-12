@@ -47,16 +47,19 @@ export function mockReplayOpener(
 
 /**
  * Mints a token through the page's `./sse-token` endpoint. Returns null when signed out: the
- * guard's 303 is followed to the login page, so a redirected, non-2xx, or non-JSON response means
- * the session is gone. A network failure throws.
+ * guard's 303 is followed to the login page, so a redirected, 401/403, or non-JSON response means
+ * the session is gone. Any other failure (a network error, or a 5xx while the API is down) throws,
+ * so the connection counts a failed attempt and backs off instead of sending the recruiter to login.
  */
 export async function requestSseToken(
 	url: string,
 	fetchFn: typeof fetch = fetch
 ): Promise<string | null> {
 	const res = await fetchFn(url, { method: 'POST' });
+	if (res.redirected || res.status === 401 || res.status === 403) return null;
+	if (!res.ok) throw new Error(`sse-token mint failed: ${res.status}`);
 	const isJson = res.headers.get('content-type')?.includes('application/json') ?? false;
-	if (res.redirected || !res.ok || !isJson) return null;
+	if (!isJson) return null;
 	return ((await res.json()) as { sse_token: string }).sse_token;
 }
 

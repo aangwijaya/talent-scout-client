@@ -293,12 +293,20 @@ describe('requestSseToken', () => {
 		await expect(requestSseToken('/x', fetchFn)).resolves.toBeNull();
 	});
 
-	it('treats a non-2xx status as signed out', async () => {
-		const fetchFn = respond(JSON.stringify({ message: 'no' }), {
-			status: 401,
-			headers: JSON_HEADERS
-		});
+	it.each([401, 403])('treats a %i status as signed out', async (status) => {
+		const fetchFn = respond(JSON.stringify({ message: 'no' }), { status, headers: JSON_HEADERS });
 		await expect(requestSseToken('/x', fetchFn)).resolves.toBeNull();
+	});
+
+	// The API being down (5xx via rethrowApiError) is not a signed-out recruiter: it must throw so
+	// the connection counts a failed attempt and backs off, instead of sending them to the login page.
+	it.each([
+		[500, JSON_HEADERS],
+		[502, JSON_HEADERS],
+		[503, HTML_HEADERS]
+	])('lets a %i status throw, so it counts as a failed attempt', async (status, headers) => {
+		const fetchFn = respond(JSON.stringify({ message: 'down' }), { status, headers });
+		await expect(requestSseToken('/x', fetchFn)).rejects.toThrow(String(status));
 	});
 
 	it('lets a network failure throw, so it counts as a failed attempt', async () => {
