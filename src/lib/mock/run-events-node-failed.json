@@ -572,7 +572,7 @@
 		"node_id": "scorer",
 		"attempt": 2,
 		"data": {
-			"error": "timeout",
+			"error": "llm_unavailable",
 			"will_retry": false
 		}
 	},

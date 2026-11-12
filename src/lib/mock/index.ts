@@ -68,7 +68,7 @@ const failed = (
 	...started,
 	event: 'node.failed',
 	attempt,
-	data: { error: 'timeout', will_retry }
+	data: { error: will_retry ? 'timeout' : 'llm_unavailable', will_retry }
 });
 
 /** Gives a derived replay its own run id, `seq` 1…n, and a `ts` 2 s apart from the first event. */
