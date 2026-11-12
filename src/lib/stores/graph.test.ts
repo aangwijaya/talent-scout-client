@@ -47,21 +47,17 @@ describe('initialRunState', () => {
 			.map((edge) => edge.id)
 			.sort();
 
-	it('marks the three loop-back edges as retry paths', () => {
-		expect(retryPaths(MOCK_RUN_ID)).toEqual(
-			['evidence_check>scorer', 'interviewer>interviewer', 'plan_check>planner'].sort()
-		);
-	});
-
-	it('marks the planner self-loop as a retry path when run.started lists it', () => {
-		expect(retryPaths(MOCK_PLANNER_RETRY_RUN_ID)).toEqual(
-			[
-				'evidence_check>scorer',
-				'interviewer>interviewer',
-				'plan_check>planner',
-				'planner>planner'
-			].sort()
-		);
+	it('marks both self-loops and both automatic loop-backs as retry paths in every run', () => {
+		for (const runId of [MOCK_RUN_ID, MOCK_PLANNER_RETRY_RUN_ID]) {
+			expect(retryPaths(runId)).toEqual(
+				[
+					'evidence_check>scorer',
+					'interviewer>interviewer',
+					'plan_check>planner',
+					'planner>planner'
+				].sort()
+			);
+		}
 	});
 });
 

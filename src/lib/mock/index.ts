@@ -21,20 +21,25 @@ export const MOCK_MANUAL_RETRY_RUN_ID = '9d1f3b5c-7e9a-4c2d-b4f6-0b2d4f6a8c80';
 export const MOCK_PLANNER_RETRY_RUN_ID = '3e5a7c9d-1f2b-4d6e-a8c0-2e4a6c8d0f90';
 
 /**
- * server#9 added the interviewer self-loop (the applicant's manual retry) to `run.started.edges`,
- * after the JSON files were recorded; it is inserted here, after `guard → interviewer`.
+ * `run.started.edges` lists both applicant-retry self-loops (EVENTS.md "Graph shape"), added
+ * after the JSON files were recorded; they are inserted here, before `planner → plan_check` and
+ * after `guard → interviewer`.
  */
-function withSelfLoop(event: RunEvent): RunEvent {
+function withSelfLoops(event: RunEvent): RunEvent {
 	if (event.event !== 'run.started') return event;
-	const edges = event.data.edges.flatMap((edge) =>
-		edge.from === 'guard' && edge.to === 'interviewer'
-			? [edge, { from: 'interviewer' as const, to: 'interviewer' as const }]
-			: [edge]
-	);
+	const edges = event.data.edges.flatMap((edge) => {
+		if (edge.from === 'planner' && edge.to === 'plan_check') {
+			return [{ from: 'planner' as const, to: 'planner' as const }, edge];
+		}
+		if (edge.from === 'guard' && edge.to === 'interviewer') {
+			return [edge, { from: 'interviewer' as const, to: 'interviewer' as const }];
+		}
+		return [edge];
+	});
 	return { ...event, data: { ...event.data, edges } };
 }
 
-const asRunEvents = (events: unknown) => (events as RunEvent[]).map(withSelfLoop);
+const asRunEvents = (events: unknown) => (events as RunEvent[]).map(withSelfLoops);
 
 const successRun = asRunEvents(succeeded);
 
@@ -159,7 +164,6 @@ function manualRetry(): RunEvent[] {
  * into plan_check, which reuses attempt 3; the interview then runs as in the successful run.
  */
 function plannerRetry(): RunEvent[] {
-	const started = successRun[0] as EventOf<'run.started'>;
 	const planner = at(
 		'node.started',
 		find('node.started', (e) => e.node_id === 'planner')
@@ -169,13 +173,7 @@ function plannerRetry(): RunEvent[] {
 	const atAttempt3 = <E extends RunEvent>(event: E): E =>
 		event.node_id === null ? event : { ...event, attempt: 3 };
 	return renumber(MOCK_PLANNER_RETRY_RUN_ID, [
-		{
-			...started,
-			data: {
-				...started.data,
-				edges: [{ from: 'planner', to: 'planner' }, ...started.data.edges]
-			}
-		},
+		successRun[0],
 		planner,
 		failed(planner, 1, true),
 		{ ...planner, attempt: 2 },
