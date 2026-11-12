@@ -122,6 +122,21 @@ describe('run replay data', () => {
 		});
 	});
 
+	it('uses §4 node.failed codes, and never timeout for a final LLM failure', () => {
+		const codes: readonly string[] = ['timeout', 'llm_unavailable', 'empty_reply', 'llm_error'];
+		const llmNodes: readonly (string | null)[] = ['planner', 'interviewer', 'judge', 'scorer'];
+		const failures = Object.entries(mockRunEvents).flatMap(([runId, events]) =>
+			events.flatMap((e) =>
+				e.event === 'node.failed' ? [{ runId, node: e.node_id, ...e.data }] : []
+			)
+		);
+		expect(failures.length).toBeGreaterThan(0);
+		expect(failures.filter((f) => !codes.includes(f.error))).toEqual([]);
+		expect(
+			failures.filter((f) => !f.will_retry && llmNodes.includes(f.node) && f.error === 'timeout')
+		).toEqual([]);
+	});
+
 	it('follows §6.1 for a successful run', () => {
 		expect(compact(mockRunEvents[MOCK_RUN_ID])).toEqual([
 			...planOk,
@@ -184,7 +199,7 @@ describe('run replay data', () => {
 		expect(failures).toEqual([
 			{ node: 'judge', error: 'timeout', will_retry: true },
 			{ node: 'scorer', error: 'timeout', will_retry: true },
-			{ node: 'scorer', error: 'timeout', will_retry: false }
+			{ node: 'scorer', error: 'llm_unavailable', will_retry: false }
 		]);
 		const skips = events.flatMap((e) =>
 			e.event === 'node.skipped' ? [{ node: e.node_id, ...e.data }] : []
@@ -229,7 +244,7 @@ describe('run replay data', () => {
 		const failures = events.flatMap((e) => (e.event === 'node.failed' ? [e.data] : []));
 		expect(failures).toEqual([
 			{ error: 'timeout', will_retry: true },
-			{ error: 'timeout', will_retry: false }
+			{ error: 'llm_unavailable', will_retry: false }
 		]);
 		expect(events.at(-1)?.event).toBe('run.completed');
 	});
