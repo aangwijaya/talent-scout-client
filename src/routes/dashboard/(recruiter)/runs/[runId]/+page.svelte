@@ -11,13 +11,21 @@
 	import X from '@lucide/svelte/icons/x';
 	import { untrack } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import Button from '$lib/components/Button.svelte';
 	import GraphView from '$lib/components/GraphView.svelte';
-	import { replayEvents, type RunEvent } from '$lib/events';
+	import type { RunEvent } from '$lib/events';
 	import { mockRunEvents } from '$lib/mock';
 	import type { NodeId } from '$lib/server/api/types';
 	import { initialRunState, reduceRun } from '$lib/stores/graph';
-	import { createRunConnection, type ConnectionStatus } from '$lib/stores/run-stream';
+	import {
+		createRunConnection,
+		eventSourceOpener,
+		loginSearch,
+		mockReplayOpener,
+		requestSseToken,
+		type ConnectionStatus
+	} from '$lib/stores/run-stream';
 	import {
 		connectionAlertText,
 		isRunEnded,
@@ -70,34 +78,29 @@
 		mode = snapshot.status === 'running' ? 'live' : 'replay';
 		const append = (event: RunEvent) => (events = [...events, event]);
 
-		if (stream) {
-			const live = createRunConnection({
-				streamUrl: stream.url,
-				mintToken: async () => {
-					const res = await fetch(
-						resolve('/dashboard/(recruiter)/runs/[runId]/sse-token', { runId: snapshot.id }),
-						{ method: 'POST' }
-					);
-					if (!res.ok) throw new Error(String(res.status));
-					return ((await res.json()) as { sse_token: string }).sse_token;
-				},
-				onEvent: append,
-				onStatus: (status) => (connection = status)
-			});
-			live.open(stream.sse_token, 0);
-			reconnect = live.reconnect;
-			return live.close;
-		}
-
-		// Mock mode: a running run arrives gradually, an ended one is already complete.
-		const fixture = mockRunEvents[snapshot.id] ?? [];
-		if (snapshot.status !== 'running') {
-			events = [...fixture];
-			connection = 'ended';
-			return;
-		}
-		connection = 'live';
-		return replayEvents(fixture, append, { onDone: () => (connection = 'ended') });
+		const live = createRunConnection({
+			// Mock mode: a running run arrives gradually, an ended one is already complete.
+			openStream: stream
+				? eventSourceOpener(stream.url)
+				: mockReplayOpener(mockRunEvents[snapshot.id] ?? [], {
+						gradual: snapshot.status === 'running'
+					}),
+			mintToken: () =>
+				requestSseToken(
+					resolve('/dashboard/(recruiter)/runs/[runId]/sse-token', { runId: snapshot.id })
+				),
+			onEvent: append,
+			onStatus: (status) => (connection = status),
+			// A full load: the session is gone, so nothing on this page is worth keeping.
+			onSignedOut: () =>
+				location.assign(
+					`${resolve('/dashboard/login')}?${loginSearch(page.url.pathname + page.url.search)}`
+				)
+		});
+		// The mock opener delivers an ended run synchronously; `append` reads `events`.
+		untrack(() => live.open(stream?.sse_token ?? '', 0));
+		reconnect = live.reconnect;
+		return live.close;
 	});
 
 	$effect(() => {
