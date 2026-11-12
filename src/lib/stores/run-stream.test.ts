@@ -3,7 +3,7 @@ import type { RunEvent } from '$lib/events';
 import {
 	createRunConnection,
 	eventSourceOpener,
-	loginPathFor,
+	loginSearch,
 	mockReplayOpener,
 	requestSseToken,
 	type ConnectionStatus,
@@ -309,12 +309,11 @@ describe('requestSseToken', () => {
 	});
 });
 
-describe('loginPathFor', () => {
+describe('loginSearch', () => {
 	it('returns to the current path after login and says the session ended', () => {
-		const url = new URL(loginPathFor('/dashboard/runs/r1?from=a'), 'http://x');
-		expect(url.pathname).toBe('/dashboard/login');
-		expect(url.searchParams.get('redirectTo')).toBe('/dashboard/runs/r1?from=a');
-		expect(url.searchParams.get('reason')).toBe('session_ended');
+		const params = new URLSearchParams(loginSearch('/dashboard/runs/r1?from=a'));
+		expect(params.get('redirectTo')).toBe('/dashboard/runs/r1?from=a');
+		expect(params.get('reason')).toBe('session_ended');
 	});
 });
 
