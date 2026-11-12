@@ -1,8 +1,8 @@
 {
-  "server_commit": "822f3fa3d0e3249818a66df16a21a4fef8f868c4",
+  "server_commit": "fbde9c44f6a05ffd4aa0b62acbcd9b2bcc47b79e",
   "files": {
     "docs/API.md": "50fde7ac80428a6c5b4b153b8945fc0629428c111d2562a216feb3ef793f20cc",
-    "docs/EVENTS.md": "1ec3bd60ebaad4d5d637dac7443ee3fb65183f9972c150d6993589fe19c0739f",
+    "docs/EVENTS.md": "eb600c886b0994dd6d97f555fb8f71e27e9b807936a61bea2a3fb02305016bd2",
     "docs/PRD.md": "acc3225d89349b6391bb74c54674d0b81413c031174a5905b2301b39f7f656ac",
     "src/lib/server/api/openapi.yaml": "1e4cbf059b89259feb0a7b6debb5b3724c0031c4284a5bb957ab155b240b6b0c"
   }
