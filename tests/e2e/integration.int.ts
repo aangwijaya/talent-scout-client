@@ -10,12 +10,12 @@ function required(name: string): string {
 	return value;
 }
 
-const password = required('INTEGRATION_RECRUITER_PASSWORD');
+const recruiterLogin = required('INTEGRATION_RECRUITER_PASSWORD');
 const seedJobTitle = required('INTEGRATION_SEED_JOB_TITLE');
 
 test('the recruiter logs in and sees the seeded job', async ({ page, context }) => {
 	await page.goto('/dashboard/login');
-	await page.getByLabel('Password', { exact: true }).fill(password);
+	await page.getByLabel('Password', { exact: true }).fill(recruiterLogin);
 	await page.getByRole('button', { name: 'Sign in' }).click();
 
 	await expect(page).toHaveURL(/\/dashboard\/jobs$/);
@@ -25,7 +25,7 @@ test('the recruiter logs in and sees the seeded job', async ({ page, context }) 
 
 test('a wrong password shows the login error and sets no session', async ({ page, context }) => {
 	await page.goto('/dashboard/login');
-	await page.getByLabel('Password', { exact: true }).fill(`${password}-wrong`);
+	await page.getByLabel('Password', { exact: true }).fill(`${recruiterLogin}-wrong`);
 	await page.getByRole('button', { name: 'Sign in' }).click();
 
 	await expect(page.getByRole('alert')).toBeVisible();

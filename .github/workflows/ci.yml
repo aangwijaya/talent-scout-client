@@ -44,14 +44,15 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          # Throwaway local container: trust auth, so no password exists anywhere in the job.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: talent_scout
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s
           --health-retries 30
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/talent_scout?sslmode=disable
+      DATABASE_URL: postgres://postgres@localhost:5432/talent_scout?sslmode=disable
       SERVER_DIR: .server
       INTEGRATION_API_URL: http://127.0.0.1:8080
       APP_ENV: test
