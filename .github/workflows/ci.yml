@@ -90,7 +90,7 @@ jobs:
       - name: Migrate and seed the database
         working-directory: ${{ env.SERVER_DIR }}
         run: |
-          go run ./cmd/migrate
+          go run ./cmd/migrate up
           go run ./cmd/seed -config config/seed-job.yaml
           title=$(yq -r '.title // .job.title // ""' config/seed-job.yaml)
           test -n "$title" || { echo "::error::No job title found in config/seed-job.yaml"; exit 1; }
