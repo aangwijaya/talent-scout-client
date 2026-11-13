@@ -7,7 +7,7 @@ let server: ChildProcess;
 
 beforeAll(async () => {
 	server = spawn(process.execPath, [
-		new URL('fake-storage.ts', import.meta.url).pathname,
+		new URL('../../tests/e2e/fake-storage.ts', import.meta.url).pathname,
 		`${PORT}`
 	]);
 	for (let i = 0; i < 50; i++) {

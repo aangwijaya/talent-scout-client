@@ -2,7 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const pdfUrl = new URL('cv.pdf', import.meta.url);
+const fixtures = new URL('../../tests/e2e/fixtures/', import.meta.url);
+const pdfUrl = new URL('cv.pdf', fixtures);
 const pdf = () => readFileSync(pdfUrl, 'latin1');
 
 describe('cv.pdf fixture', () => {
@@ -32,7 +33,7 @@ describe('cv.pdf fixture', () => {
 
 	it('matches what make-cv-pdf.ts generates', () => {
 		const committed = readFileSync(pdfUrl);
-		execFileSync(process.execPath, [new URL('make-cv-pdf.ts', import.meta.url).pathname]);
+		execFileSync(process.execPath, [new URL('make-cv-pdf.ts', fixtures).pathname]);
 		expect(readFileSync(pdfUrl).equals(committed)).toBe(true);
 	});
 });
