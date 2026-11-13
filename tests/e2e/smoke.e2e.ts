@@ -10,8 +10,9 @@ const MAX_ANSWERS = 20;
 
 /** Anything under 16px makes iOS Safari zoom in when the field gets focus. */
 async function expectNoZoomOnFocus(fields: Locator): Promise<void> {
+	// `count()` does not wait, and the composer renders only after Start is handled.
+	await expect(fields.first()).toBeVisible();
 	const count = await fields.count();
-	expect(count).toBeGreaterThan(0);
 	for (let i = 0; i < count; i++) {
 		const size = await fields.nth(i).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
 		expect(size, `font-size of field ${i}`).toBeGreaterThanOrEqual(16);
@@ -73,11 +74,12 @@ test('apply, finish the screening chat, then review the application', async ({ p
 	});
 
 	await test.step('answer until the finished screen', async () => {
+		// The input unlocks after `message.completed`; the last answer ends the session instead and
+		// unmounts the composer. One auto-waiting check: `answer.isEnabled()` would wait forever for
+		// a textarea that `session.ended` has just removed.
+		const ready = done.or(answer.and(page.locator(':enabled')));
 		for (let sent = 1; sent < MAX_ANSWERS; sent++) {
-			// The input unlocks after `message.completed`; the last answer ends the session instead.
-			await expect(async () => {
-				expect((await done.isVisible()) || (await answer.isEnabled())).toBe(true);
-			}).toPass();
+			await expect(ready).toBeVisible();
 			if (await done.isVisible()) break;
 			await answer.fill(`Answer number ${sent + 1}.`);
 			await send.click();

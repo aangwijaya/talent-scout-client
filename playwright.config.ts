@@ -57,6 +57,8 @@ export default defineConfig({
 		{
 			name: 'auth',
 			testMatch: 'auth.e2e.ts',
+			// Every test resets and reads the one request log in `fake-api.ts`.
+			workers: 1,
 			use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${REAL_PORT}` }
 		}
 	]
