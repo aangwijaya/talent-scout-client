@@ -90,6 +90,9 @@ jobs:
       - name: Migrate and seed the database
         working-directory: ${{ env.SERVER_DIR }}
         run: |
+          # The migrations revoke table access from Supabase's anon/authenticated roles,
+          # which a plain Postgres container does not have.
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;"
           go run ./cmd/migrate up
           go run ./cmd/seed -config config/seed-job.yaml
           title=$(yq -r '.title // .job.title // ""' config/seed-job.yaml)
