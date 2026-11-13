@@ -35,6 +35,100 @@ jobs:
           path: test-results/
           retention-days: 7
 
+  # The client with USE_MOCK=false against the Go server at the commit pinned in contract.lock.
+  # Every secret here is a throwaway value generated in the job; nothing comes from GitHub secrets.
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: talent_scout
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/talent_scout?sslmode=disable
+      SERVER_DIR: .server
+      INTEGRATION_API_URL: http://127.0.0.1:8080
+      APP_ENV: test
+      LLM_MODE: fake
+      EMAIL_MODE: log
+      PORT: '8080'
+      FRONTEND_ORIGIN: http://localhost:4175
+      PUBLIC_APP_URL: http://localhost:4175
+      # Storage is only used for CV upload/download. client#10 points SUPABASE_URL at a fake
+      # storage endpoint under tests/ for the apply flow.
+      SUPABASE_URL: ''
+      SUPABASE_SERVICE_ROLE_KEY: ''
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read the pinned server commit
+        id: pin
+        run: echo "server_commit=$(jq -re .server_commit contract.lock)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: aangwijaya/talent-scout-server
+          ref: ${{ steps.pin.outputs.server_commit }}
+          path: ${{ env.SERVER_DIR }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ env.SERVER_DIR }}/go.mod
+          cache-dependency-path: ${{ env.SERVER_DIR }}/go.sum
+      - name: Generate throwaway test secrets
+        run: |
+          for name in AUTH_TOKEN_SECRET RECRUITER_PASSWORD BFF_SHARED_SECRET; do
+            value=$(openssl rand -hex 32)
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+            echo "INTEGRATION_$name=$value" >> "$GITHUB_ENV"
+          done
+      - name: Migrate and seed the database
+        working-directory: ${{ env.SERVER_DIR }}
+        run: |
+          go run ./cmd/migrate
+          go run ./cmd/seed -config config/seed-job.yaml
+          title=$(yq -r '.title // .job.title // ""' config/seed-job.yaml)
+          test -n "$title" || { echo "::error::No job title found in config/seed-job.yaml"; exit 1; }
+          echo "INTEGRATION_SEED_JOB_TITLE=$title" >> "$GITHUB_ENV"
+      - name: Start the Go server (LLM_MODE=fake, EMAIL_MODE=log)
+        working-directory: ${{ env.SERVER_DIR }}
+        run: |
+          # The API main is the only cmd/ package besides migrate and seed.
+          mains=$(find cmd -mindepth 1 -maxdepth 1 -type d ! -name migrate ! -name seed)
+          test "$(echo "$mains" | wc -l)" -eq 1 || { echo "::error::Expected one API main in cmd/, found: $mains"; exit 1; }
+          go build -o "$RUNNER_TEMP/talent-scout-api" "./$mains"
+          nohup "$RUNNER_TEMP/talent-scout-api" > "$RUNNER_TEMP/server.log" 2>&1 &
+          for _ in $(seq 60); do
+            curl -fsS "$INTEGRATION_API_URL/api/v1/health?deep=1" && exit 0
+            sleep 1
+          done
+          echo "::error::The Go server was not healthy after 60 s"
+          cat "$RUNNER_TEMP/server.log"
+          exit 1
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright Chromium and its system libraries
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Integration tests (real client against the Go server)
+        run: pnpm exec playwright test --project integration
+      - name: Server log
+        if: always()
+        run: cat "$RUNNER_TEMP/server.log" || true
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: integration-traces
+          path: test-results/
+          retention-days: 7
+
   contract:
     runs-on: ubuntu-latest
     steps:

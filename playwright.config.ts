@@ -1,7 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
-import { FAKE_API_PORT, MOCK_PORT, REAL_PORT } from './tests/e2e/ports';
+import { FAKE_API_PORT, INTEGRATION_PORT, MOCK_PORT, REAL_PORT } from './tests/e2e/ports';
 
 const preview = (port: number) => `pnpm preview --port ${port} --strictPort`;
+
+// Set only by the `integration` CI job, which starts the Go server first (.github/workflows/ci.yml).
+const integrationApi = process.env.INTEGRATION_API_URL;
 
 export default defineConfig({
 	testDir: 'tests/e2e',
@@ -35,7 +38,21 @@ export default defineConfig({
 				BFF_SHARED_SECRET: 'e2e-bff-secret'
 			},
 			reuseExistingServer: false
-		}
+		},
+		...(integrationApi
+			? [
+					{
+						command: preview(INTEGRATION_PORT),
+						port: INTEGRATION_PORT,
+						env: {
+							USE_MOCK: 'false',
+							API_BASE_URL: integrationApi,
+							BFF_SHARED_SECRET: process.env.INTEGRATION_BFF_SHARED_SECRET ?? ''
+						},
+						reuseExistingServer: false
+					}
+				]
+			: [])
 	],
 	projects: [
 		{
@@ -60,6 +77,15 @@ export default defineConfig({
 			// Every test resets and reads the one request log in `fake-api.ts`.
 			workers: 1,
 			use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${REAL_PORT}` }
-		}
+		},
+		...(integrationApi
+			? [
+					{
+						name: 'integration',
+						testMatch: '**/*.int.ts',
+						use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${INTEGRATION_PORT}` }
+					}
+				]
+			: [])
 	]
 });
