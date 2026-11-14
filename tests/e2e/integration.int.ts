@@ -145,6 +145,9 @@ test('apply, screen, review, shortlist and watch the run against the real API', 
 	await test.step('the live graph replays to run.completed over the real SSE', async () => {
 		await recruiter.getByRole('link', { name: 'View graph run' }).click();
 		await expect(recruiter).toHaveURL(/\/dashboard\/runs\/[0-9a-f-]{36}/);
+		// A server without GET /graph-runs/{runId} (e.g. a stale contract.lock pin) lands on the
+		// route's error page; fail here with that message instead of an empty graph.
+		await expect(recruiter.getByText('Graph run not found')).toHaveCount(0);
 		try {
 			const graph = recruiter.getByRole('region', { name: /Graph of the run/ });
 			await expect(graph.locator('.svelte-flow__node')).toHaveCount(8);
