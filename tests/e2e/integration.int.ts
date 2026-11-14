@@ -39,6 +39,25 @@ test('apply, screen, review, shortlist and watch the run against the real API', 
 
 	const requestUrls: string[] = [];
 	recruiter.on('request', (request) => requestUrls.push(request.url()));
+	// Printed if the live-graph step fails: what the browser saw on the run stream.
+	const diagnostics: string[] = [];
+	const isRunStream = (url: string) => url.includes('/graph-runs/') || url.includes('/sse-token');
+	const redactToken = (url: string) => url.replace(/sse_token=[^&]+/, 'sse_token=<redacted>');
+	recruiter.on('response', (response) => {
+		if (!isRunStream(response.url())) return;
+		const headers = response.headers();
+		diagnostics.push(
+			`response ${response.status()} ${redactToken(response.url())} content-type=${headers['content-type']} acao=${headers['access-control-allow-origin']}`
+		);
+	});
+	recruiter.on('requestfailed', (request) => {
+		diagnostics.push(`failed ${redactToken(request.url())}: ${request.failure()?.errorText}`);
+	});
+	recruiter.on('console', (message) => {
+		if (message.type() === 'error' || message.type() === 'warning')
+			diagnostics.push(`console.${message.type()} ${redactToken(message.text())}`);
+	});
+	recruiter.on('pageerror', (error) => diagnostics.push(`pageerror ${error.message}`));
 
 	const jobId = await test.step('the recruiter opens the seeded job', async () => {
 		await signIn(recruiter);
@@ -126,12 +145,27 @@ test('apply, screen, review, shortlist and watch the run against the real API', 
 	await test.step('the live graph replays to run.completed over the real SSE', async () => {
 		await recruiter.getByRole('link', { name: 'View graph run' }).click();
 		await expect(recruiter).toHaveURL(/\/dashboard\/runs\/[0-9a-f-]{36}/);
-		const graph = recruiter.getByRole('region', { name: /Graph of the run/ });
-		await expect(graph.locator('.svelte-flow__node')).toHaveCount(8);
-		const events = recruiter.locator('section[aria-labelledby="events-title"]');
-		await expect(events.getByText('run.completed', { exact: true })).toBeVisible({
-			timeout: 30_000
-		});
+		try {
+			const graph = recruiter.getByRole('region', { name: /Graph of the run/ });
+			await expect(graph.locator('.svelte-flow__node')).toHaveCount(8);
+			const events = recruiter.locator('section[aria-labelledby="events-title"]');
+			await expect(events.getByText('run.completed', { exact: true })).toBeVisible({
+				timeout: 30_000
+			});
+		} catch (error) {
+			const alerts = await recruiter.getByRole('alert').allInnerTexts();
+			const statuses = await recruiter.getByRole('status').allInnerTexts();
+			const report = [
+				`url ${recruiter.url()}`,
+				`h1 ${await recruiter.locator('h1').allInnerTexts()}`,
+				`alerts ${JSON.stringify(alerts)}`,
+				`statuses ${JSON.stringify(statuses)}`,
+				...diagnostics
+			].join('\n');
+			console.log(`live-graph diagnostics:\n${report}`);
+			await test.info().attach('live-graph-diagnostics', { body: report });
+			throw error;
+		}
 
 		const streams = requestUrls.filter((url) => /\/graph-runs\/[^/]+\/events\?/.test(url));
 		expect(streams.length, 'run stream requests').toBeGreaterThan(0);
