@@ -19,6 +19,10 @@ export type ChatState = {
 	streaming: { message_id: string; text: string } | null;
 	/** Input is locked while the AI owes a reply, or once the session has ended. */
 	awaiting: boolean;
+	/** The applicant's typed answer; only a successful send clears it. */
+	draft: string;
+	/** The server answered 409 `invalid_state`: the draft waits to be resent. */
+	held: boolean;
 	finish_reason: FinishReason | null;
 	error: { retryable: boolean } | null;
 };
@@ -35,6 +39,8 @@ export function initialChat(session: SessionInfo, messages: readonly Message[]):
 		messages: [...messages],
 		streaming: null,
 		awaiting: !lastIsAssistant(messages),
+		draft: '',
+		held: false,
 		finish_reason: null,
 		error: null
 	};
@@ -58,8 +64,24 @@ export function sendingAnswer(chat: ChatState, answer: Message): ChatState {
 		...chat,
 		messages,
 		awaiting: chat.finish_reason !== null || !lastIsAssistant(messages),
+		draft: '',
+		held: false,
 		error: null
 	};
+}
+
+/** The server is still finishing its turn (409 `invalid_state`): keep the draft and lock the box. */
+export function answerHeld(chat: ChatState): ChatState {
+	return { ...chat, held: true, error: null };
+}
+
+/** Unlocks a held draft, right before it is resent or when resending gives up. */
+export function releaseHeld(chat: ChatState): ChatState {
+	return { ...chat, held: false };
+}
+
+export function inputLocked(chat: ChatState): boolean {
+	return chat.awaiting || chat.held || chat.finish_reason !== null;
 }
 
 export function reduceChat(chat: ChatState, event: SessionEvent): ChatState {
@@ -90,6 +112,7 @@ export function reduceChat(chat: ChatState, event: SessionEvent): ChatState {
 				finish_reason: event.data.finish_reason,
 				streaming: null,
 				awaiting: true,
+				held: false,
 				error: null
 			};
 		case 'error':

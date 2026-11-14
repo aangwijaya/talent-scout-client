@@ -7,7 +7,9 @@ import type { Actions, PageServerLoad } from './$types';
 const MAX_ANSWER = 2000;
 
 function toFailure(err: unknown) {
-	if (err instanceof ApiError) return fail(err.status, { error: sessionErrorMessage(err) });
+	if (err instanceof ApiError) {
+		return fail(err.status, { error: sessionErrorMessage(err), code: err.code });
+	}
 	throw err;
 }
 

@@ -109,7 +109,10 @@ describe('actions', () => {
 		api.sendMessage.mockRejectedValue(new ApiError(409, 'invalid_state', 'raw'));
 		const result = await act('message', event(form));
 		expect(isActionFailure(result)).toBe(true);
-		expect(result).toMatchObject({ status: 409, data: { error: expect.stringMatching(/wait/i) } });
+		expect(result).toMatchObject({
+			status: 409,
+			data: { error: expect.stringMatching(/wait/i), code: 'invalid_state' }
+		});
 	});
 
 	it('retry calls POST /retry', async () => {

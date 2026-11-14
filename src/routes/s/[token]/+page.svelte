@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { enhance, type SubmitFunction } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
@@ -17,7 +17,15 @@
 	} from '$lib/events';
 	import { mockSessionTurns } from '$lib/mock';
 	import type { Message, SessionInfo } from '$lib/server/api/types';
-	import { initialChat, rebuildChat, reduceChat, sendingAnswer } from '$lib/stores/chat';
+	import {
+		answerHeld,
+		initialChat,
+		inputLocked as isChatLocked,
+		rebuildChat,
+		reduceChat,
+		releaseHeld,
+		sendingAnswer
+	} from '$lib/stores/chat';
 	import type { PageProps } from './$types';
 
 	const COPY = {
@@ -47,6 +55,9 @@
 	};
 	const MAX_ANSWER = 2000;
 	const STREAM_RETRY_MS = 5000;
+	// After `message.completed` the server can still be closing its turn and answer 409
+	// `invalid_state`; the held draft is resent on this schedule, then the box unlocks.
+	const RESEND_MS = [500, 1000, 2000, 4000];
 
 	let { data }: PageProps = $props();
 
@@ -56,7 +67,9 @@
 	let formError = $state<string | null>(null);
 	let streamReady = $state(false);
 	let submitting = $state(false);
-	let answer = $state('');
+	let resendAttempts = 0;
+	let resendTimer: ReturnType<typeof setTimeout> | undefined;
+	onDestroy(() => clearTimeout(resendTimer));
 	let now = $state(Date.now());
 	let list = $state<HTMLElement>();
 	let answerForm = $state<HTMLFormElement>();
@@ -71,7 +84,7 @@
 		chat.deadline_at ? Math.max(0, Date.parse(chat.deadline_at) - now) : null
 	);
 	const timeUp = $derived(remainingMs === 0);
-	const inputLocked = $derived(chat.awaiting || ended || timeUp || submitting);
+	const inputLocked = $derived(isChatLocked(chat) || timeUp || submitting);
 	const countdown = $derived.by(() => {
 		if (remainingMs === null) return '';
 		const total = Math.ceil(remainingMs / 1000);
@@ -160,20 +173,38 @@
 	};
 
 	const messageSubmit: SubmitFunction = ({ cancel }) => {
-		if (inputLocked || answer.trim().length === 0) return cancel();
+		if (inputLocked || chat.draft.trim().length === 0) return cancel();
 		submitting = true;
 		formError = null;
 		return async ({ result }) => {
 			submitting = false;
 			if (result.type === 'success' && result.data?.message) {
+				resendAttempts = 0;
 				chat = sendingAnswer(chat, result.data.message as Message);
-				answer = '';
 				if (mock) replayTurn(chat.messages.filter((m) => m.role === 'applicant').length);
+			} else if (
+				result.type === 'failure' &&
+				result.data?.code === 'invalid_state' &&
+				!chat.error &&
+				resendAttempts < RESEND_MS.length
+			) {
+				chat = answerHeld(chat);
+				resendTimer = setTimeout(resendHeld, RESEND_MS[resendAttempts++]);
 			} else if (result.type === 'failure') {
+				resendAttempts = 0;
+				chat = releaseHeld(chat);
 				formError = String(result.data?.error ?? '');
 			}
 		};
 	};
+
+	async function resendHeld() {
+		if (!chat.held) return;
+		chat = releaseHeld(chat);
+		// A disabled textarea is left out of the form data, so let it re-enable first.
+		await tick();
+		answerForm?.requestSubmit();
+	}
 
 	const retrySubmit: SubmitFunction = () => {
 		formError = null;
@@ -305,7 +336,7 @@
 					hidden
 				></form>
 				<p class="text-caption text-helper" aria-live="polite">
-					{#if timeUp}{COPY.timeUp}{:else if chat.awaiting && !chat.error}{COPY.waiting}{/if}
+					{#if timeUp}{COPY.timeUp}{:else if (chat.awaiting || chat.held) && !chat.error}{COPY.waiting}{/if}
 				</p>
 				<form
 					bind:this={answerForm}
@@ -321,7 +352,7 @@
 						rows="2"
 						maxlength={MAX_ANSWER}
 						placeholder={COPY.placeholder}
-						bind:value={answer}
+						bind:value={chat.draft}
 						onkeydown={onKeydown}
 						disabled={inputLocked}
 						class="min-h-11 flex-1 resize-none rounded-input border border-line bg-card px-3 py-2 text-base text-body outline-hidden placeholder:text-helper focus-visible:ring-2 focus-visible:ring-focus disabled:bg-subtle disabled:text-helper"
@@ -329,7 +360,7 @@
 					<button
 						type="submit"
 						aria-label={COPY.send}
-						disabled={inputLocked || answer.trim().length === 0}
+						disabled={inputLocked || chat.draft.trim().length === 0}
 						class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-brand text-card outline-hidden transition-colors [-webkit-tap-highlight-color:transparent] hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 active:bg-brand/80 disabled:cursor-not-allowed disabled:bg-subtle disabled:text-helper"
 					>
 						<SendHorizontal size={20} aria-hidden="true" />
