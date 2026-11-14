@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionEvent } from '$lib/events';
 import type { Message, SessionInfo } from '$lib/server/api/types';
-import { initialChat, rebuildChat, reduceChat, sendingAnswer } from './chat';
+import {
+	answerHeld,
+	initialChat,
+	inputLocked,
+	rebuildChat,
+	reduceChat,
+	releaseHeld,
+	sendingAnswer
+} from './chat';
 
 const session: SessionInfo = {
 	status: 'invited',
@@ -173,5 +181,54 @@ describe('rebuildChat', () => {
 		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
 		const chat = rebuildChat(initialChat({ ...session, status: 'active' }, []), [opening, answer]);
 		expect(chat.awaiting).toBe(true);
+	});
+});
+
+describe('answer lock and draft (client#63)', () => {
+	const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
+
+	it('keeps the input locked from Start until the opening message.completed', () => {
+		let chat = initialChat({ ...session, status: 'active' }, []);
+		expect(inputLocked(chat)).toBe(true);
+		chat = reduceChat(chat, ev('message.delta', { message_id: 'm1', delta: 'Tell me' }));
+		expect(inputLocked(chat)).toBe(true);
+		chat = reduceChat(chat, ev('message.completed', { message: opening }));
+		expect(inputLocked(chat)).toBe(false);
+	});
+
+	it('locks again after a send until the next assistant message.completed', () => {
+		let chat = { ...initialChat({ ...session, status: 'active' }, [opening]), draft: 'my answer' };
+		chat = sendingAnswer(chat, answer);
+		expect(chat.draft).toBe('');
+		expect(inputLocked(chat)).toBe(true);
+		chat = reduceChat(chat, ev('message.completed', { message: answer }));
+		expect(inputLocked(chat)).toBe(true);
+		chat = reduceChat(chat, ev('message.completed', { message: { ...opening, id: 'm3' } }));
+		expect(inputLocked(chat)).toBe(false);
+	});
+
+	it('a 409 invalid_state keeps the draft and holds the input in the waiting state', () => {
+		let chat = {
+			...initialChat({ ...session, status: 'active' }, [opening]),
+			draft: 'my first answer'
+		};
+		chat = answerHeld(chat);
+		expect(chat.draft).toBe('my first answer');
+		expect(chat.messages).toEqual([opening]);
+		expect(chat.held).toBe(true);
+		expect(inputLocked(chat)).toBe(true);
+		// A late event must not unlock the box over the held draft.
+		chat = reduceChat(chat, ev('message.completed', { message: { ...opening, id: 'm3' } }));
+		expect(inputLocked(chat)).toBe(true);
+		chat = releaseHeld(chat);
+		expect(chat.draft).toBe('my first answer');
+		expect(inputLocked(chat)).toBe(false);
+	});
+
+	it('session.ended clears a held answer and stays locked', () => {
+		let chat = answerHeld({ ...initialChat(session, [opening]), draft: 'x' });
+		chat = reduceChat(chat, ev('session.ended', { finish_reason: 'time_limit' }));
+		expect(chat.held).toBe(false);
+		expect(inputLocked(chat)).toBe(true);
 	});
 });
