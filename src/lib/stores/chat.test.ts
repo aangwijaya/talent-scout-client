@@ -81,6 +81,28 @@ describe('reduceChat', () => {
 		expect(chat.awaiting).toBe(false);
 	});
 
+	// EVENTS.md: a retryable `error` (llm_unavailable) waits for POST /retry; a send then is 409.
+	it('keeps the input locked while a retryable error waits for Retry', () => {
+		const opening0 = initialChat({ ...session, status: 'active' }, []);
+		expect(
+			inputLocked(
+				reduceChat(
+					opening0,
+					ev('error', { code: 'llm_unavailable', message: 'x', retryable: true })
+				)
+			)
+		).toBe(true);
+
+		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
+		let chat = sendingAnswer(initialChat(session, [opening]), answer);
+		chat = reduceChat(chat, ev('message.completed', { message: answer }));
+		chat = reduceChat(
+			chat,
+			ev('error', { code: 'llm_unavailable', message: 'x', retryable: true })
+		);
+		expect(inputLocked(chat)).toBe(true);
+	});
+
 	it('ignores a duplicate message.completed', () => {
 		let chat = initialChat(session, [opening]);
 		chat = reduceChat(chat, ev('message.completed', { message: opening }));
