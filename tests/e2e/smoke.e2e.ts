@@ -64,10 +64,24 @@ test('apply, finish the screening chat, then review the application', async ({ p
 	await test.step('the composer stays usable on a small screen', async () => {
 		await expectNoZoomOnFocus(answer);
 		await expect(answer).toBeEnabled();
+		// client#63: the server can still answer 409 `invalid_state` right after
+		// `message.completed`. The draft must stay in the locked box and be resent, not dropped.
+		let sends = 0;
+		await page.route(/\?\/message$/, (route) => {
+			if (sends++ > 0) return route.fallback();
+			const data = [{ error: 1, code: 2 }, 'Please wait.', 'invalid_state'];
+			return route.fulfill({
+				json: { type: 'failure', status: 409, data: JSON.stringify(data) }
+			});
+		});
 		await answer.focus();
 		await answer.fill('My first answer.');
 		await send.click();
+		await expect(answer).toBeDisabled();
+		await expect(answer).toHaveValue('My first answer.');
 		await expect(page.getByRole('log').getByText('My first answer.')).toBeVisible();
+		expect(sends).toBe(2);
+		await page.unrouteAll();
 		await expect(answer).toBeInViewport();
 		await expect(send).toBeInViewport();
 		await expectNoHorizontalScroll(page);
