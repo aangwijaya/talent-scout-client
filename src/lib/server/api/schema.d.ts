@@ -670,6 +670,8 @@ export interface components {
 		/** @description Too many requests. */
 		RateLimited: {
 			headers: {
+				/** @description Whole seconds until the rate-limit window resets. */
+				'Retry-After'?: number;
 				[name: string]: unknown;
 			};
 			content: {
@@ -746,6 +748,7 @@ export interface operations {
 				};
 			};
 			401: components['responses']['Unauthorized'];
+			429: components['responses']['RateLimited'];
 		};
 	};
 	mintSSEToken: {
@@ -1122,6 +1125,7 @@ export interface operations {
 			404: components['responses']['SessionNotFound'];
 			409: components['responses']['Conflict'];
 			410: components['responses']['SessionGone'];
+			429: components['responses']['RateLimited'];
 		};
 	};
 	retrySession: {
