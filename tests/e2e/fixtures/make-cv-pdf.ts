@@ -1,5 +1,6 @@
 // Writes `cv.pdf`: a one-page PDF with extractable text for a made-up person (no real personal
-// data), used by `integration.int.ts`. Rerun with `node tests/e2e/fixtures/make-cv-pdf.ts`.
+// data), used by `integration.int.ts`. Rerun with `node tests/e2e/fixtures/make-cv-pdf.ts`;
+// an optional argument writes to that path instead.
 import { writeFileSync } from 'node:fs';
 
 const LINES = [
@@ -33,4 +34,4 @@ pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
 pdf += offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('');
 pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
 
-writeFileSync(new URL('cv.pdf', import.meta.url), pdf);
+writeFileSync(process.argv[2] ?? new URL('cv.pdf', import.meta.url), pdf);

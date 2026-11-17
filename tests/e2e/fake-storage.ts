@@ -1,7 +1,8 @@
 // A stand-in for Supabase Storage, used by the `integration` CI job: the Go server uploads the
 // applicant's CV here and reads it back for the recruiter's CV download. Bytes live in memory.
-// Run with `node tests/e2e/fake-storage.ts <port>`.
+// Run with `node tests/e2e/fake-storage.ts <port>`; port 0 picks a free one, printed on start.
 import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 const PREFIX = '/storage/v1/object/';
 const objects = new Map<string, { type: string; body: Buffer }>();
@@ -11,7 +12,7 @@ function objectKey(path: string): string {
 	return decodeURIComponent(path.slice(PREFIX.length)).replace(/^(authenticated|public)\//, '');
 }
 
-createServer((req, res) => {
+const server = createServer((req, res) => {
 	const method = req.method ?? 'GET';
 	const path = new URL(req.url ?? '/', 'http://localhost').pathname;
 	// Logged so a failing CI run shows exactly what the server asked for.
@@ -49,4 +50,7 @@ createServer((req, res) => {
 
 	res.writeHead(405);
 	res.end();
-}).listen(Number(process.argv[2] ?? 4181));
+});
+server.listen(Number(process.argv[2] ?? 4181), () => {
+	console.log(`listening on ${(server.address() as AddressInfo).port}`);
+});

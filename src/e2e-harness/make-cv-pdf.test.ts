@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const fixtures = new URL('../../tests/e2e/fixtures/', import.meta.url);
@@ -32,8 +34,13 @@ describe('cv.pdf fixture', () => {
 	});
 
 	it('matches what make-cv-pdf.ts generates', () => {
-		const committed = readFileSync(pdfUrl);
-		execFileSync(process.execPath, [new URL('make-cv-pdf.ts', fixtures).pathname]);
-		expect(readFileSync(pdfUrl).equals(committed)).toBe(true);
+		const dir = mkdtempSync(join(tmpdir(), 'cv-pdf-'));
+		try {
+			const out = join(dir, 'cv.pdf');
+			execFileSync(process.execPath, [new URL('make-cv-pdf.ts', fixtures).pathname, out]);
+			expect(readFileSync(out).equals(readFileSync(pdfUrl))).toBe(true);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
