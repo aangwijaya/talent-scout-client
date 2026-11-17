@@ -1,24 +1,30 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-const PORT = 4191;
-const BASE = `http://localhost:${PORT}/storage/v1/object`;
 let server: ChildProcess;
+let origin: string;
+let BASE: string;
 
+/** Port 0 lets the OS pick a free port; the server prints the one it got. */
 beforeAll(async () => {
 	server = spawn(process.execPath, [
 		new URL('../../tests/e2e/fake-storage.ts', import.meta.url).pathname,
-		`${PORT}`
+		'0'
 	]);
-	for (let i = 0; i < 50; i++) {
-		try {
-			await fetch(`http://localhost:${PORT}/`);
-			return;
-		} catch {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-		}
-	}
-	throw new Error('fake storage did not start');
+	const port = await new Promise<string>((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error('fake storage did not start')), 5000);
+		let out = '';
+		server.stdout?.on('data', (chunk: Buffer) => {
+			out += chunk.toString();
+			const match = /listening on (\d+)/.exec(out);
+			if (match) {
+				clearTimeout(timer);
+				resolve(match[1]);
+			}
+		});
+	});
+	origin = `http://localhost:${port}`;
+	BASE = `${origin}/storage/v1/object`;
 });
 
 afterAll(() => {
@@ -61,7 +67,7 @@ describe('fake Supabase Storage', () => {
 
 	it('returns 404 for a missing object or a path outside the storage API', async () => {
 		expect((await fetch(`${BASE}/cvs/missing.pdf`)).status).toBe(404);
-		expect((await fetch(`http://localhost:${PORT}/rest/v1/jobs`)).status).toBe(404);
+		expect((await fetch(`${origin}/rest/v1/jobs`)).status).toBe(404);
 	});
 
 	it('rejects other methods', async () => {
