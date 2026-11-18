@@ -50,20 +50,49 @@ test('apply, finish the screening chat, then review the application', async ({ p
 		await expect(page.getByRole('heading', { name: 'Application received' })).toBeVisible();
 	});
 
-	await test.step('start the screening', async () => {
+	await test.step('start the screening: the typing indicator shows until the first words', async () => {
+		// Mock mode replays the first question 60–150 ms after Start; a paused clock holds it.
+		await page.clock.install();
 		await page.goto(`/s/${INVITED_TOKEN}`);
 		const start = page.getByRole('button', { name: 'Start screening' });
 		await expect(start).toBeEnabled();
+		await page.clock.pauseAt(Date.now() + 60_000);
 		await start.click();
+
+		const typing = page.getByRole('status', {
+			name: 'The interviewer is preparing your first question'
+		});
+		const log = page.getByRole('log');
+		await expect(typing).toBeVisible();
+		await expect(page.getByText('Preparing your first question…')).toBeVisible();
+		await expect(log.locator('p.shadow-card')).toHaveCount(0);
+
+		await page.clock.resume();
+		await expect(log.locator('p.shadow-card').first()).not.toBeEmpty();
+		await expect(typing).toBeHidden();
 	});
 
 	const answer = page.getByLabel('Your answer');
-	const send = page.getByRole('button', { name: 'Send answer' });
+	const send = page.getByRole('button', { name: 'Send' });
 	const done = page.getByRole('heading', { name: 'Thank you!' });
 
 	await test.step('the composer stays usable on a small screen', async () => {
 		await expectNoZoomOnFocus(answer);
 		await expect(answer).toBeEnabled();
+		const sendBox = await send.boundingBox();
+		expect(sendBox?.width).toBeGreaterThanOrEqual(44);
+		expect(sendBox?.height).toBeGreaterThanOrEqual(44);
+
+		// The box grows with the answer, then stops at 40% of the viewport and scrolls inside.
+		const height = () => answer.evaluate((el) => el.getBoundingClientRect().height);
+		const empty = await height();
+		await answer.fill('line\n'.repeat(4));
+		expect(await height()).toBeGreaterThan(empty);
+		await answer.fill('line\n'.repeat(60));
+		const cap = await page.evaluate(() => window.innerHeight * 0.4);
+		expect(await height()).toBeLessThanOrEqual(cap + 1);
+		expect(await answer.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+		await answer.fill('');
 		// client#63: the server can still answer 409 `invalid_state` right after
 		// `message.completed`. The draft must stay in the locked box and be resent, not dropped.
 		let sends = 0;

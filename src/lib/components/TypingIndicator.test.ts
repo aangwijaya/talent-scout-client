@@ -19,8 +19,8 @@ describe('TypingIndicator', () => {
 
 	it('animates the dots only for users who allow motion', () => {
 		const { body } = render(TypingIndicator, { props: { first: false } });
-		expect(body).toContain('motion-safe:animate-typing-dot');
-		expect(body).not.toMatch(/[\s"]animate-typing-dot/);
+		expect(body).toContain('motion-safe:animate-[typing-dot');
+		expect(body).not.toMatch(/[\s"]animate-\[/);
 		expect(body).toContain('opacity-60');
 	});
 });

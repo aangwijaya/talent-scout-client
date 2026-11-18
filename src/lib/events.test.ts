@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	keepSessionStream,
 	openSessionStream,
-	replayEvents, type RunEvent, type SessionEvent } from './events';
+	replayEvents,
+	type RunEvent,
+	type SessionEvent
+} from './events';
 import { MOCK_RUN_ID, mockRunEvents } from './mock';
 
 class FakeEventSource {
@@ -123,6 +126,7 @@ describe('keepSessionStream', () => {
 		const onReady = vi.fn();
 		keepSessionStream('u', { onEvent: () => {}, rebuild, onReady, retryMs: 5000 });
 		FakeEventSource.last.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
 		expect(onReady).toHaveBeenLastCalledWith(true);
 		const first = giveUp();
 		expect(onReady).toHaveBeenLastCalledWith(false);
@@ -130,6 +134,7 @@ describe('keepSessionStream', () => {
 		expect(rebuild).toHaveBeenCalledOnce();
 		expect(FakeEventSource.last).not.toBe(first);
 		FakeEventSource.last.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
 		expect(onReady).toHaveBeenLastCalledWith(true);
 	});
 

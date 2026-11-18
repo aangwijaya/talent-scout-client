@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-18 — #69 A UI state that lasts 100 ms needs a paused clock in Playwright
+- **Context:** proving the typing indicator shows after Start and before the first mock delta
+- **Problem:** mock mode replays the first delta 60–150 ms after Start, so an `expect(...).toBeVisible()` would pass or fail by luck
+- **Cause:** `replayEvents` runs on `setTimeout`; nothing holds the state long enough to assert on
+- **Lesson:** `page.clock.install()` before `goto`, `page.clock.pauseAt(...)` before the action, assert the transient state, then `page.clock.resume()`; the server SSR tests (no DOM) can't see autosize, so keep DOM math in a pure helper and assert real sizes in the e2e
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-11 — #8 `no-navigation-without-resolve` only reads the start of `href`
 - **Context:** adding `?from=<applicationId>` to the review page's "View graph run" link
 - **Problem:** building the URL in a template literal (`` `${resolve(…)}?from=${id}` ``) or passing it as a prop failed lint with `svelte/no-navigation-without-resolve`

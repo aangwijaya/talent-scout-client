@@ -4,17 +4,15 @@
 	import { invalidateAll } from '$app/navigation';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Clock from '@lucide/svelte/icons/clock';
-	import SendHorizontal from '@lucide/svelte/icons/send-horizontal';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import AnswerBox from '$lib/components/AnswerBox.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Card from '$lib/components/Card.svelte';
+	import { canSend } from '$lib/components/composer';
 	import InlineError from '$lib/components/InlineError.svelte';
 	import MessageBubble from '$lib/components/MessageBubble.svelte';
-	import {
-		openSessionStream,
-		replayEvents,
-		type SessionEvent,
-		type SessionStream
-	} from '$lib/events';
+	import TypingIndicator from '$lib/components/TypingIndicator.svelte';
+	import { keepSessionStream, replayEvents, type SessionEvent } from '$lib/events';
 	import { mockSessionTurns } from '$lib/mock';
 	import type { Message, SessionInfo } from '$lib/server/api/types';
 	import {
@@ -24,7 +22,8 @@
 		rebuildChat,
 		reduceChat,
 		releaseHeld,
-		sendingAnswer
+		sendingAnswer,
+		typingIndicator
 	} from '$lib/stores/chat';
 	import type { PageProps } from './$types';
 
@@ -38,12 +37,9 @@
 		],
 		start: 'Start screening',
 		connecting: 'Connecting…',
-		topic: 'Topic',
+		topic: (position: number, total: number) => `Topic ${position} of ${total}`,
 		timeLeft: 'Time left',
-		answerLabel: 'Your answer',
-		placeholder: 'Type your answer…',
-		send: 'Send answer',
-		waiting: 'The interviewer is replying…',
+		reconnecting: 'Reconnecting… your draft is kept.',
 		timeUp: 'Time is up. Wrapping up your session…',
 		retryError: 'The interviewer ran into a temporary problem.',
 		fatalError: 'The interviewer ran into a problem. Please wait a moment.',
@@ -53,8 +49,8 @@
 		failed:
 			'Something went wrong on our side, not yours. The recruiter has been notified and will send you a new link.'
 	};
-	const MAX_ANSWER = 2000;
 	const STREAM_RETRY_MS = 5000;
+	const FOLLOW_SLACK_PX = 80;
 	// After `message.completed` the server can still be closing its turn and answer 409
 	// `invalid_state`; the held draft is resent on this schedule, then the box unlocks.
 	const RESEND_MS = [500, 1000, 2000, 4000];
@@ -66,6 +62,7 @@
 	let chat = $state(initialChat(data.session, data.messages));
 	let formError = $state<string | null>(null);
 	let streamReady = $state(false);
+	let reconnecting = $state(false);
 	let submitting = $state(false);
 	let resendAttempts = 0;
 	let resendTimer: ReturnType<typeof setTimeout> | undefined;
@@ -85,6 +82,7 @@
 	);
 	const timeUp = $derived(remainingMs === 0);
 	const inputLocked = $derived(isChatLocked(chat) || timeUp || submitting);
+	const typing = $derived(timeUp ? null : typingIndicator(chat));
 	const countdown = $derived.by(() => {
 		if (remainingMs === null) return '';
 		const total = Math.ceil(remainingMs / 1000);
@@ -113,38 +111,38 @@
 		}
 		const sseUrl = data.sseUrl;
 		if (!sseUrl || ended) return () => clearInterval(timer);
-		const rebuild = async () => {
-			await invalidateAll();
-			chat = rebuildChat(chat, data.messages);
-		};
-		let stream: SessionStream;
-		let retryTimer: ReturnType<typeof setTimeout> | undefined;
 		// Opened before `POST /start`: the stream accepts invited sessions, so no delta is lost.
-		const connect = () => {
-			stream = openSessionStream(sseUrl, {
-				onEvent: apply,
-				onReconnect: rebuild,
-				// The browser gave up. The load turns an ended/expired session into the 404/410
-				// page; if the session is still live, rebuild and reopen after a pause.
-				onConnectionError: async () => {
-					streamReady = false;
-					await rebuild();
-					retryTimer = setTimeout(connect, STREAM_RETRY_MS);
-				}
-			});
-			stream.ready.then(() => (streamReady = true));
-		};
-		connect();
+		// When the browser gives up, the reload turns an ended/expired session into the 404/410
+		// page; if the session is still live, the stream reopens after a pause.
+		const { stop } = keepSessionStream(sseUrl, {
+			onEvent: apply,
+			rebuild: async () => {
+				await invalidateAll();
+				chat = rebuildChat(chat, data.messages);
+			},
+			onReady: (ready) => {
+				streamReady = ready;
+				reconnecting = !ready;
+			},
+			retryMs: STREAM_RETRY_MS
+		});
 		return () => {
 			clearInterval(timer);
-			clearTimeout(retryTimer);
-			stream.close();
+			stop();
 		};
 	});
 
+	// Follow the newest message unless the applicant scrolled up to reread.
+	let followLatest = true;
+	function onLogScroll() {
+		if (!list) return;
+		followLatest = list.scrollHeight - list.scrollTop - list.clientHeight < FOLLOW_SLACK_PX;
+	}
 	$effect(() => {
 		void chat.messages.length;
 		void chat.streaming?.text;
+		void typing;
+		if (!followLatest) return;
 		tick().then(() => list?.scrollTo({ top: list.scrollHeight }));
 	});
 
@@ -173,7 +171,7 @@
 	};
 
 	const messageSubmit: SubmitFunction = ({ cancel }) => {
-		if (inputLocked || chat.draft.trim().length === 0) return cancel();
+		if (!canSend(chat.draft, inputLocked || reconnecting)) return cancel();
 		submitting = true;
 		formError = null;
 		return async ({ result }) => {
@@ -213,13 +211,6 @@
 			else if (result.type === 'failure') formError = String(result.data?.error ?? '');
 		};
 	};
-
-	function onKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
-			event.preventDefault();
-			answerForm?.requestSubmit();
-		}
-	}
 </script>
 
 <svelte:head>
@@ -228,32 +219,44 @@
 </svelte:head>
 
 <main class="flex h-dvh flex-col bg-canvas text-body">
-	<header class="border-b border-line bg-card px-4 py-3">
-		<div class="mx-auto flex max-w-[720px] items-center justify-between gap-3">
-			<div class="min-w-0">
+	<header class="sticky top-0 z-10 border-b border-line bg-card px-4 py-3">
+		<div class="mx-auto flex max-w-[720px] flex-wrap items-center justify-between gap-x-4 gap-y-2">
+			<div class="min-w-0 flex-1">
 				<p class="text-caption font-medium text-brand">Talent Scout</p>
 				<h1 class="truncate text-base font-semibold text-ink">{data.session.job_title}</h1>
 			</div>
 			{#if chat.status === 'active' && !ended}
-				<div class="flex shrink-0 items-center gap-3 text-body-sm">
-					{#if chat.current_topic}
-						<span class="rounded-full bg-wash px-3 py-1 font-medium text-brand">
-							<span class="sr-only">{COPY.topic}</span>
-							{chat.current_topic.position}/{chat.current_topic.total}
-						</span>
-					{/if}
-					{#if countdown}
-						<span
-							class={[
-								'flex items-center gap-1 font-mono tabular-nums',
-								remainingMs !== null && remainingMs < 120_000 ? 'text-warning-text' : 'text-muted'
-							]}
-							aria-label="{COPY.timeLeft}: {countdown}"
-						>
-							<Clock size={16} aria-hidden="true" />{countdown}
-						</span>
-					{/if}
-				</div>
+				{#if chat.current_topic}
+					{@const topic = chat.current_topic}
+					<div
+						class="order-last flex w-full items-center gap-3 sm:order-none sm:w-auto sm:flex-col-reverse sm:items-end sm:gap-1"
+					>
+						<div class="flex flex-1 gap-1 sm:flex-none" aria-hidden="true">
+							{#each { length: topic.total }, i (i)}
+								<span
+									class={[
+										'h-1 flex-1 rounded-full sm:w-6 sm:flex-none',
+										i < topic.position ? 'bg-brand' : 'bg-line'
+									]}
+								></span>
+							{/each}
+						</div>
+						<p class="shrink-0 text-caption font-medium text-muted">
+							{COPY.topic(topic.position, topic.total)}
+						</p>
+					</div>
+				{/if}
+				{#if countdown}
+					<span
+						class={[
+							'flex shrink-0 items-center gap-1 font-mono text-body-sm font-medium tabular-nums',
+							remainingMs !== null && remainingMs < 120_000 ? 'text-warning-text' : 'text-muted'
+						]}
+						aria-label="{COPY.timeLeft}: {countdown}"
+					>
+						<Clock size={16} aria-hidden="true" />{countdown}
+					</span>
+				{/if}
 			{/if}
 		</div>
 	</header>
@@ -299,14 +302,23 @@
 			</Card>
 		</div>
 	{:else}
+		{#if reconnecting}
+			<div role="status" class="bg-wash px-4 py-2">
+				<p class="mx-auto flex max-w-[720px] items-center gap-2 text-body-sm text-muted">
+					<LoaderCircle size={16} aria-hidden="true" class="text-brand motion-safe:animate-spin" />
+					{COPY.reconnecting}
+				</p>
+			</div>
+		{/if}
 		<section
 			bind:this={list}
+			onscroll={onLogScroll}
 			role="log"
 			aria-live="polite"
 			aria-label="Conversation"
 			class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6"
 		>
-			<div class="mx-auto flex max-w-[720px] flex-col gap-3">
+			<div class="mx-auto flex min-h-full max-w-[720px] flex-col justify-end gap-3">
 				{#each chat.messages as message (message.id)}
 					{#if message.role !== 'system'}
 						<MessageBubble role={message.role} content={message.content} />
@@ -314,12 +326,14 @@
 				{/each}
 				{#if chat.streaming}
 					<MessageBubble role="assistant" content={chat.streaming.text} streaming />
+				{:else if typing}
+					<TypingIndicator first={typing === 'first'} />
 				{/if}
 			</div>
 		</section>
 
 		<div
-			class="border-t border-line bg-card px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+			class="border-t border-line bg-card px-1.5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
 		>
 			<div class="mx-auto flex max-w-[720px] flex-col gap-2">
 				{#if chat.error?.retryable}
@@ -335,36 +349,11 @@
 					use:enhance={retrySubmit}
 					hidden
 				></form>
-				<p class="text-caption text-helper" aria-live="polite">
-					{#if timeUp}{COPY.timeUp}{:else if (chat.awaiting || chat.held) && !chat.error}{COPY.waiting}{/if}
+				<p class="text-caption text-helper empty:hidden" aria-live="polite">
+					{#if timeUp}{COPY.timeUp}{/if}
 				</p>
-				<form
-					bind:this={answerForm}
-					method="POST"
-					action="?/message"
-					use:enhance={messageSubmit}
-					class="flex items-end gap-2"
-				>
-					<label for="answer" class="sr-only">{COPY.answerLabel}</label>
-					<textarea
-						id="answer"
-						name="content"
-						rows="2"
-						maxlength={MAX_ANSWER}
-						placeholder={COPY.placeholder}
-						bind:value={chat.draft}
-						onkeydown={onKeydown}
-						disabled={inputLocked}
-						class="min-h-11 flex-1 resize-none rounded-input border border-line bg-card px-3 py-2 text-base text-body outline-hidden placeholder:text-helper focus-visible:ring-2 focus-visible:ring-focus disabled:bg-subtle disabled:text-helper"
-					></textarea>
-					<button
-						type="submit"
-						aria-label={COPY.send}
-						disabled={inputLocked || chat.draft.trim().length === 0}
-						class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-brand text-card outline-hidden transition-colors [-webkit-tap-highlight-color:transparent] hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 active:bg-brand/80 disabled:cursor-not-allowed disabled:bg-subtle disabled:text-helper"
-					>
-						<SendHorizontal size={20} aria-hidden="true" />
-					</button>
+				<form bind:this={answerForm} method="POST" action="?/message" use:enhance={messageSubmit}>
+					<AnswerBox bind:value={chat.draft} locked={inputLocked} {reconnecting} />
 				</form>
 			</div>
 		</div>
