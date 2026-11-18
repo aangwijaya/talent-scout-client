@@ -56,10 +56,22 @@ export function rebuildChat(chat: ChatState, messages: readonly Message[]): Chat
 	};
 }
 
-/** The action result can lose the race to the stream's `message.completed` for the same answer. */
+/** Inserts `message` before any message created after it, so a late arrival keeps its place. */
+function insertInOrder(messages: readonly Message[], message: Message): Message[] {
+	const at = Date.parse(message.created_at);
+	const index = messages.findIndex((m) => Date.parse(m.created_at) > at);
+	return index === -1
+		? [...messages, message]
+		: [...messages.slice(0, index), message, ...messages.slice(index)];
+}
+
+/**
+ * The action result can lose the race to the stream: to the `message.completed` for the same
+ * answer, or even to the AI reply that follows it.
+ */
 export function sendingAnswer(chat: ChatState, answer: Message): ChatState {
 	const known = chat.messages.some((m) => m.id === answer.id);
-	const messages = known ? chat.messages : [...chat.messages, answer];
+	const messages = known ? chat.messages : insertInOrder(chat.messages, answer);
 	return {
 		...chat,
 		messages,
@@ -82,6 +94,17 @@ export function releaseHeld(chat: ChatState): ChatState {
 
 export function inputLocked(chat: ChatState): boolean {
 	return chat.awaiting || chat.held || chat.finish_reason !== null;
+}
+
+/**
+ * Whether the interviewer is due to reply with nothing streamed yet: `first` before the first
+ * question, `next` after that, `null` when no typing indicator should show.
+ */
+export function typingIndicator(chat: ChatState): 'first' | 'next' | null {
+	if (!chat.awaiting || chat.streaming || chat.held || chat.error || chat.finish_reason !== null) {
+		return null;
+	}
+	return chat.messages.some((m) => m.role === 'assistant') ? 'next' : 'first';
 }
 
 export function reduceChat(chat: ChatState, event: SessionEvent): ChatState {

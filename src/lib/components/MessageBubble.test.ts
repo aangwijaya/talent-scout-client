@@ -12,7 +12,15 @@ describe('MessageBubble', () => {
 
 	it('exposes a completed message', () => {
 		const { body } = render(MessageBubble, { props: { role: 'assistant', content: 'Done' } });
-		expect(body).not.toContain('aria-hidden');
+		expect(body).not.toMatch(/^(<!--[^>]*-->)*<div[^>]*aria-hidden/);
+		expect(body).toMatch(/<p[^>]*>Done/);
+	});
+
+	it('shows the interviewer avatar, hidden from assistive tech, only on interviewer messages', () => {
+		const assistant = render(MessageBubble, { props: { role: 'assistant', content: 'Q' } }).body;
+		const applicant = render(MessageBubble, { props: { role: 'applicant', content: 'A' } }).body;
+		expect(assistant).toMatch(/<span[^>]*bg-wash[^>]*aria-hidden="true"/);
+		expect(applicant).not.toContain('bg-wash');
 	});
 
 	it('animates the caret only for users who allow motion', () => {

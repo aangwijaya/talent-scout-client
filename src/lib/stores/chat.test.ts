@@ -8,7 +8,8 @@ import {
 	rebuildChat,
 	reduceChat,
 	releaseHeld,
-	sendingAnswer
+	sendingAnswer,
+	typingIndicator
 } from './chat';
 
 const session: SessionInfo = {
@@ -176,6 +177,24 @@ describe('sendingAnswer', () => {
 		expect(chat.awaiting).toBe(false);
 	});
 
+	it('puts the answer before a reply that arrived first, when the stream never sent the answer', () => {
+		const answer: Message = {
+			...opening,
+			id: 'm2',
+			role: 'applicant',
+			kind: 'answer',
+			created_at: '2026-11-09T10:01:00Z'
+		};
+		const reply: Message = { ...opening, id: 'm3', created_at: '2026-11-09T10:01:05Z' };
+		let chat = reduceChat(
+			initialChat(session, [opening]),
+			ev('message.completed', { message: reply })
+		);
+		chat = sendingAnswer(chat, answer);
+		expect(chat.messages.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+		expect(chat.awaiting).toBe(false);
+	});
+
 	it('stays locked after session.ended even if the answer was already known', () => {
 		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
 		let chat = reduceChat(
@@ -186,6 +205,38 @@ describe('sendingAnswer', () => {
 		chat = reduceChat(chat, ev('session.ended', { finish_reason: 'completed' }));
 		chat = sendingAnswer(chat, answer);
 		expect(chat.awaiting).toBe(true);
+	});
+});
+
+describe('typingIndicator', () => {
+	const active: SessionInfo = { ...session, status: 'active' };
+
+	it('shows the first-question indicator before any interviewer message', () => {
+		expect(typingIndicator(initialChat(active, []))).toBe('first');
+	});
+
+	it('is replaced by the streaming bubble on the first delta', () => {
+		const chat = reduceChat(
+			initialChat(active, []),
+			ev('message.delta', { message_id: 'm1', delta: 'Tell' })
+		);
+		expect(typingIndicator(chat)).toBeNull();
+	});
+
+	it('shows a plain typing indicator after an answer, and none while the box is open', () => {
+		const answer: Message = { ...opening, id: 'm2', role: 'applicant', kind: 'answer' };
+		const ready = initialChat(active, [opening]);
+		expect(typingIndicator(ready)).toBeNull();
+		expect(typingIndicator(sendingAnswer(ready, answer))).toBe('next');
+	});
+
+	it('hides on an error, a held draft, or the end of the session', () => {
+		const waiting = initialChat(active, []);
+		const failed = ev('error', { code: 'x', message: 'x', retryable: true });
+		const ended = ev('session.ended', { finish_reason: 'completed' });
+		expect(typingIndicator(reduceChat(waiting, failed))).toBeNull();
+		expect(typingIndicator(answerHeld(waiting))).toBeNull();
+		expect(typingIndicator(reduceChat(waiting, ended))).toBeNull();
 	});
 });
 

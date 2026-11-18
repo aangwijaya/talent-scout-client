@@ -132,11 +132,13 @@ export function openSessionStream(
 	{
 		onEvent,
 		onReconnect,
-		onConnectionError
+		onConnectionError,
+		onDrop
 	}: {
 		onEvent: (event: SessionEvent) => void;
 		onReconnect?: () => void;
 		onConnectionError?: () => void;
+		onDrop?: () => void;
 	}
 ): SessionStream {
 	const source = new EventSource(url);
@@ -153,17 +155,90 @@ export function openSessionStream(
 	// (e.g. the session ended or expired while offline). No HTTP status is exposed.
 	source.addEventListener('error', () => {
 		if (source.readyState === EventSource.CLOSED) onConnectionError?.();
+		else onDrop?.();
 	});
 	for (const name of SESSION_EVENT_NAMES) {
 		source.addEventListener(name, (raw) => {
 			// The browser's own connection errors also fire `error`, without data.
 			if (!(raw instanceof MessageEvent) || typeof raw.data !== 'string') return;
-			const event = { ...JSON.parse(raw.data), event: name } as SessionEvent;
-			onEvent(event);
+			const parsed = parseData(name, raw.data);
+			if (!parsed) return;
+			onEvent({ ...parsed, event: name } as SessionEvent);
 			if (name === 'session.ended') source.close();
 		});
 	}
 	return { ready, close: () => source.close() };
+}
+
+/** A malformed payload is skipped: throwing inside the EventSource dispatch helps no one. */
+function parseData(name: string, data: string): object | null {
+	try {
+		const parsed: unknown = JSON.parse(data);
+		if (typeof parsed === 'object' && parsed !== null) return parsed;
+	} catch {
+		// Reported below.
+	}
+	if (import.meta.env.DEV) console.warn(`Skipped a malformed ${name} event`);
+	return null;
+}
+
+/**
+ * `openSessionStream` that reopens itself after the browser gives up: `rebuild` reloads the
+ * page data first (an ended or expired session becomes the 404/410 page), then the stream
+ * reopens after `retryMs`, even if the reload failed. `stop()` ends it for good, including a
+ * rebuild still in flight. `onReady` reports whether the stream is connected.
+ */
+export function keepSessionStream(
+	url: string,
+	{
+		onEvent,
+		rebuild,
+		onReady,
+		retryMs
+	}: {
+		onEvent: (event: SessionEvent) => void;
+		rebuild: () => Promise<void>;
+		onReady?: (ready: boolean) => void;
+		retryMs: number;
+	}
+): { ready: Promise<void>; stop: () => void } {
+	let stopped = false;
+	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	let stream: SessionStream;
+
+	const connect = () => {
+		stream = openSessionStream(url, {
+			onEvent,
+			onReconnect: () => {
+				if (!stopped) onReady?.(true);
+				void rebuild().catch(() => {});
+			},
+			onDrop: () => onReady?.(false),
+			onConnectionError: async () => {
+				onReady?.(false);
+				try {
+					await rebuild();
+				} catch {
+					// Still live as far as we know: keep trying.
+				}
+				if (!stopped) retryTimer = setTimeout(connect, retryMs);
+			}
+		});
+		stream.ready.then(() => {
+			if (!stopped) onReady?.(true);
+		});
+		return stream.ready;
+	};
+
+	const ready = connect();
+	return {
+		ready,
+		stop: () => {
+			stopped = true;
+			clearTimeout(retryTimer);
+			stream.close();
+		}
+	};
 }
 
 const RUN_EVENT_NAMES = [

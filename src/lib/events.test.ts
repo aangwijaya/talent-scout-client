@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { openSessionStream, replayEvents, type RunEvent, type SessionEvent } from './events';
+import {
+	keepSessionStream,
+	openSessionStream,
+	replayEvents,
+	type RunEvent,
+	type SessionEvent
+} from './events';
 import { MOCK_RUN_ID, mockRunEvents } from './mock';
 
 class FakeEventSource {
@@ -23,6 +29,9 @@ class FakeEventSource {
 		const e =
 			data === undefined ? new Event(type) : new MessageEvent(type, { data: JSON.stringify(data) });
 		for (const fn of this.listeners.get(type) ?? []) fn(e);
+	}
+	emitRaw(type: string, data: string) {
+		for (const fn of this.listeners.get(type) ?? []) fn(new MessageEvent(type, { data }));
 	}
 }
 
@@ -80,6 +89,104 @@ describe('openSessionStream', () => {
 		await expect(stream.ready).resolves.toBeUndefined();
 		stream.close();
 		expect(FakeEventSource.last.closed).toBe(true);
+	});
+
+	it('skips an event whose data is not valid JSON, and keeps delivering', () => {
+		const seen: SessionEvent[] = [];
+		openSessionStream('u', { onEvent: (e) => seen.push(e) });
+		const es = FakeEventSource.last;
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		expect(() => es.emitRaw('message.delta', '{not json')).not.toThrow();
+		expect(() => es.emitRaw('message.delta', '')).not.toThrow();
+		es.emit('message.delta', { ...envelope, data: { message_id: 'm', delta: 'ok' } });
+		expect(seen).toHaveLength(1);
+		expect(seen[0]).toMatchObject({ data: { delta: 'ok' } });
+	});
+});
+
+describe('keepSessionStream', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.stubGlobal('EventSource', FakeEventSource);
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	const giveUp = () => {
+		const es = FakeEventSource.last;
+		es.readyState = FakeEventSource.CLOSED;
+		es.emit('error');
+		return es;
+	};
+
+	it('reopens the stream after the browser gives up, once the rebuild settles', async () => {
+		const rebuild = vi.fn(async () => {});
+		const onReady = vi.fn();
+		keepSessionStream('u', { onEvent: () => {}, rebuild, onReady, retryMs: 5000 });
+		FakeEventSource.last.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(onReady).toHaveBeenLastCalledWith(true);
+		const first = giveUp();
+		expect(onReady).toHaveBeenLastCalledWith(false);
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(rebuild).toHaveBeenCalledOnce();
+		expect(FakeEventSource.last).not.toBe(first);
+		FakeEventSource.last.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(onReady).toHaveBeenLastCalledWith(true);
+	});
+
+	it('reports a transient drop (CONNECTING) as not ready until the browser reconnects', async () => {
+		const rebuild = vi.fn(async () => {});
+		const onReady = vi.fn();
+		keepSessionStream('u', { onEvent: () => {}, rebuild, onReady, retryMs: 5000 });
+		const es = FakeEventSource.last;
+		es.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(onReady).toHaveBeenLastCalledWith(true);
+		es.readyState = FakeEventSource.CONNECTING;
+		es.emit('error');
+		expect(onReady).toHaveBeenLastCalledWith(false);
+		es.readyState = FakeEventSource.OPEN;
+		es.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(onReady).toHaveBeenLastCalledWith(true);
+		expect(FakeEventSource.last).toBe(es);
+	});
+
+	it('keeps reconnecting when the rebuild fails', async () => {
+		const rebuild = vi.fn(() => Promise.reject(new Error('503')));
+		keepSessionStream('u', { onEvent: () => {}, rebuild, retryMs: 5000 });
+		const first = giveUp();
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(FakeEventSource.last).not.toBe(first);
+	});
+
+	it('never reconnects after stop(), even when the rebuild settles later', async () => {
+		let settle: () => void = () => {};
+		const rebuild = vi.fn(() => new Promise<void>((resolve) => (settle = resolve)));
+		const { stop } = keepSessionStream('u', { onEvent: () => {}, rebuild, retryMs: 5000 });
+		const first = giveUp();
+		stop();
+		settle();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(FakeEventSource.last).toBe(first);
+		expect(first.closed).toBe(true);
+	});
+
+	it('cancels a scheduled reconnect on stop()', async () => {
+		const { stop } = keepSessionStream('u', {
+			onEvent: () => {},
+			rebuild: async () => {},
+			retryMs: 5000
+		});
+		const first = giveUp();
+		await vi.advanceTimersByTimeAsync(0);
+		stop();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(FakeEventSource.last).toBe(first);
 	});
 });
 
