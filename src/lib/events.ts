@@ -132,11 +132,13 @@ export function openSessionStream(
 	{
 		onEvent,
 		onReconnect,
-		onConnectionError
+		onConnectionError,
+		onDrop
 	}: {
 		onEvent: (event: SessionEvent) => void;
 		onReconnect?: () => void;
 		onConnectionError?: () => void;
+		onDrop?: () => void;
 	}
 ): SessionStream {
 	const source = new EventSource(url);
@@ -153,6 +155,7 @@ export function openSessionStream(
 	// (e.g. the session ended or expired while offline). No HTTP status is exposed.
 	source.addEventListener('error', () => {
 		if (source.readyState === EventSource.CLOSED) onConnectionError?.();
+		else onDrop?.();
 	});
 	for (const name of SESSION_EVENT_NAMES) {
 		source.addEventListener(name, (raw) => {
@@ -206,7 +209,11 @@ export function keepSessionStream(
 	const connect = () => {
 		stream = openSessionStream(url, {
 			onEvent,
-			onReconnect: () => void rebuild().catch(() => {}),
+			onReconnect: () => {
+				if (!stopped) onReady?.(true);
+				void rebuild().catch(() => {});
+			},
+			onDrop: () => onReady?.(false),
 			onConnectionError: async () => {
 				onReady?.(false);
 				try {

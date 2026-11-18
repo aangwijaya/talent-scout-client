@@ -138,6 +138,24 @@ describe('keepSessionStream', () => {
 		expect(onReady).toHaveBeenLastCalledWith(true);
 	});
 
+	it('reports a transient drop (CONNECTING) as not ready until the browser reconnects', async () => {
+		const rebuild = vi.fn(async () => {});
+		const onReady = vi.fn();
+		keepSessionStream('u', { onEvent: () => {}, rebuild, onReady, retryMs: 5000 });
+		const es = FakeEventSource.last;
+		es.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(onReady).toHaveBeenLastCalledWith(true);
+		es.readyState = FakeEventSource.CONNECTING;
+		es.emit('error');
+		expect(onReady).toHaveBeenLastCalledWith(false);
+		es.readyState = FakeEventSource.OPEN;
+		es.emit('open');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(onReady).toHaveBeenLastCalledWith(true);
+		expect(FakeEventSource.last).toBe(es);
+	});
+
 	it('keeps reconnecting when the rebuild fails', async () => {
 		const rebuild = vi.fn(() => Promise.reject(new Error('503')));
 		keepSessionStream('u', { onEvent: () => {}, rebuild, retryMs: 5000 });
