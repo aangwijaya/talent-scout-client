@@ -4,6 +4,12 @@ import { ApiError } from '$lib/server/api/types';
 
 const api = vi.hoisted(() => ({ getPublicJob: vi.fn(), apply: vi.fn() }));
 vi.mock('$lib/server/api', () => ({ api }));
+const env = vi.hoisted(() => ({ DEMO_PASSWORD: '' as string | undefined }));
+vi.mock('$app/env/private', () => ({
+	get DEMO_PASSWORD() {
+		return env.DEMO_PASSWORD;
+	}
+}));
 
 const { actions, load } = await import('./+page.server');
 
@@ -29,13 +35,28 @@ const runAction = (e: RequestEvent) => Promise.resolve(actions.default(e as neve
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	env.DEMO_PASSWORD = '';
 });
 
 describe('load', () => {
 	it('returns the public job', async () => {
 		api.getPublicJob.mockResolvedValue(job);
-		await expect(runLoad(event())).resolves.toEqual({ job });
+		await expect(runLoad(event())).resolves.toEqual({ job, demo: false });
 		expect(api.getPublicJob).toHaveBeenCalledWith(JOB_ID);
+	});
+
+	it('flags the demo notice when DEMO_PASSWORD is set, without exposing the password', async () => {
+		env.DEMO_PASSWORD = 'fixture-demo-pw';
+		api.getPublicJob.mockResolvedValue(job);
+		const data = await runLoad(event());
+		expect(data).toEqual({ job, demo: true });
+		expect(JSON.stringify(data)).not.toContain('fixture-demo-pw');
+	});
+
+	it('leaves out the demo notice when DEMO_PASSWORD is unset', async () => {
+		env.DEMO_PASSWORD = undefined;
+		api.getPublicJob.mockResolvedValue(job);
+		await expect(runLoad(event())).resolves.toEqual({ job, demo: false });
 	});
 
 	it('turns a missing job into a friendly 404', async () => {
