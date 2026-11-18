@@ -2,6 +2,7 @@
 	import { enhance, type SubmitFunction } from '$app/forms';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import FileText from '@lucide/svelte/icons/file-text';
+	import Info from '@lucide/svelte/icons/info';
 	import Button from '$lib/components/Button.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import InlineError from '$lib/components/InlineError.svelte';
@@ -19,7 +20,9 @@
 		cv: 'CV (PDF, max 2 MB)',
 		cvHint: 'Choose a PDF file',
 		closed: 'This job is no longer accepting applications.',
-		successHeading: 'Application received'
+		successHeading: 'Application received',
+		demoLead: 'This is a public demo:',
+		demoRest: 'anyone can read what you submit. Use a sample CV, not your real one.'
 	};
 
 	let { data, form }: PageProps = $props();
@@ -68,6 +71,15 @@
 	</header>
 
 	<div class="mx-auto flex max-w-[640px] flex-col gap-6 px-4 py-8">
+		{#if data.demo}
+			<p
+				role="note"
+				class="flex gap-2.5 rounded-input border border-brand bg-wash px-3.5 py-3 text-body-sm text-body"
+			>
+				<Info size={18} aria-hidden="true" class="mt-px shrink-0 text-brand" />
+				<span><strong class="font-semibold">{COPY.demoLead}</strong> {COPY.demoRest}</span>
+			</p>
+		{/if}
 		{#if success}
 			<Card class="flex flex-col items-center gap-3 p-8 text-center">
 				<CircleCheck size={40} aria-hidden="true" class="text-success-text" />

@@ -1,3 +1,4 @@
+import { DEMO_PASSWORD } from '$app/env/private';
 import { error, fail } from '@sveltejs/kit';
 import { api } from '$lib/server/api';
 import { ApiError } from '$lib/server/api/types';
@@ -7,7 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
 	try {
-		return { job: await api.getPublicJob(params.jobId) };
+		return { job: await api.getPublicJob(params.jobId), demo: Boolean(DEMO_PASSWORD) };
 	} catch (err) {
 		if (err instanceof ApiError && err.status === 404) {
 			error(404, 'This job could not be found. Please check the link you were given.');

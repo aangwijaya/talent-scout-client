@@ -1,3 +1,4 @@
+import { DEMO_PASSWORD } from '$app/env/private';
 import { fail, redirect } from '@sveltejs/kit';
 import { api } from '$lib/server/api';
 import { ApiError } from '$lib/server/api/types';
@@ -7,7 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	if (locals.recruiter) redirect(303, HOME_PATH);
-	return { sessionEnded: sessionEndedNotice(url) };
+	return { sessionEnded: sessionEndedNotice(url), demoPassword: DEMO_PASSWORD || null };
 };
 
 export const actions: Actions = {
