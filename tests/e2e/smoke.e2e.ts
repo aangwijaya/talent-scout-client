@@ -1,4 +1,6 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { expect, request, test, type Locator, type Page } from '@playwright/test';
+import { DEMO_PORT } from './ports';
 
 // Fixture values from src/lib/server/api/fixtures (that module imports `$lib`, which only Vite
 // resolves, so the ids are repeated here).
@@ -143,5 +145,78 @@ test('apply, finish the screening chat, then review the application', async ({ p
 		const scoreCard = page.getByRole('article', { name: 'Frontend depth' });
 		await expect(scoreCard).toBeVisible();
 		await expect(page.getByRole('article', { name: 'Communication' })).toBeVisible();
+	});
+});
+
+test('without DEMO_PASSWORD there is no demo card and no apply notice', async ({ page }) => {
+	await page.goto('/');
+	await expect(page).toHaveURL(/\/dashboard\/login/);
+	await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Demo access' })).toHaveCount(0);
+
+	await page.goto(`/apply/${JOB_ID}`);
+	await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible();
+	await expect(page.getByRole('note')).toHaveCount(0);
+});
+
+test.describe('public demo', () => {
+	// The mock `webServer` runs without DEMO_PASSWORD, so these tests preview the same build with
+	// it set. The fixture value is the mock password, so the shown password signs in.
+	let server: ChildProcess | undefined;
+	let base = '';
+
+	test.beforeAll(async () => {
+		const port = DEMO_PORT + test.info().parallelIndex;
+		base = `http://localhost:${port}`;
+		server = spawn('pnpm', ['preview', '--port', String(port), '--strictPort'], {
+			env: { ...process.env, USE_MOCK: 'true', DEMO_PASSWORD: PASSWORD },
+			stdio: 'ignore',
+			detached: true
+		});
+		const http = await request.newContext();
+		await expect
+			.poll(
+				() =>
+					http.get(base, { maxRedirects: 0 }).then(
+						(res) => res.status(),
+						() => 0
+					),
+				{ timeout: 20_000 }
+			)
+			.toBeGreaterThan(0);
+		await http.dispose();
+	});
+
+	test.afterAll(() => {
+		if (server?.pid) process.kill(-server.pid);
+	});
+
+	test('a fresh visitor signs in with the shown demo password', async ({ page, context }) => {
+		await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base });
+		await page.goto(`${base}/`);
+		await expect(page).toHaveURL(/\/dashboard\/login/);
+
+		const card = page.getByRole('region', { name: 'Demo access' });
+		await expect(card).toContainText('This is a public demo. Sign in with the password below.');
+		const shown = await card.getByTestId('demo-password').innerText();
+		expect(shown).toBe(PASSWORD);
+
+		const copy = card.getByRole('button', { name: 'Copy demo password' });
+		await copy.click();
+		await expect(copy).toContainText('Copied');
+		await expect(card.locator('[aria-live="polite"]')).not.toBeEmpty();
+		expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(PASSWORD);
+
+		await page.getByLabel('Password', { exact: true }).fill(shown);
+		await page.getByRole('button', { name: 'Sign in' }).click();
+		await expect(page).toHaveURL(/\/dashboard\/jobs$/);
+		await expect(page.getByRole('table')).toBeVisible();
+	});
+
+	test('the apply page warns that the demo is public', async ({ page }) => {
+		await page.goto(`${base}/apply/${JOB_ID}`);
+		await expect(page.getByRole('note')).toContainText(
+			'This is a public demo: anyone can read what you submit. Use a sample CV, not your real one.'
+		);
 	});
 });

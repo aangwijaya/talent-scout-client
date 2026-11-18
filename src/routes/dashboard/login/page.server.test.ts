@@ -4,6 +4,12 @@ import { ApiError } from '$lib/server/api/types';
 
 const api = vi.hoisted(() => ({ login: vi.fn() }));
 vi.mock('$lib/server/api', () => ({ api }));
+const env = vi.hoisted(() => ({ DEMO_PASSWORD: '' as string | undefined }));
+vi.mock('$app/env/private', () => ({
+	get DEMO_PASSWORD() {
+		return env.DEMO_PASSWORD;
+	}
+}));
 
 const { actions, load } = await import('./+page.server');
 
@@ -32,6 +38,7 @@ const settle = (run: () => unknown) =>
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	env.DEMO_PASSWORD = '';
 });
 
 describe('load', () => {
@@ -43,13 +50,48 @@ describe('load', () => {
 	});
 
 	it('leaves out the session-ended notice on a plain first visit', async () => {
-		await expect(settle(() => load(event() as never))).resolves.toEqual({ sessionEnded: false });
+		await expect(settle(() => load(event() as never))).resolves.toEqual({
+			sessionEnded: false,
+			demoPassword: null
+		});
 	});
 
 	it('shows the session-ended notice after the guard cleared a session', async () => {
 		await expect(settle(() => load(event({ reason: 'session_ended' }) as never))).resolves.toEqual({
-			sessionEnded: true
+			sessionEnded: true,
+			demoPassword: null
 		});
+	});
+
+	it('returns the demo password for the demo card when DEMO_PASSWORD is set', async () => {
+		env.DEMO_PASSWORD = 'fixture-demo-pw';
+		await expect(settle(() => load(event() as never))).resolves.toEqual({
+			sessionEnded: false,
+			demoPassword: 'fixture-demo-pw'
+		});
+	});
+
+	it('leaves out the demo card when DEMO_PASSWORD is unset', async () => {
+		env.DEMO_PASSWORD = undefined;
+		await expect(settle(() => load(event() as never))).resolves.toMatchObject({
+			demoPassword: null
+		});
+	});
+
+	it('never puts the recruiter token in page data', async () => {
+		env.DEMO_PASSWORD = 'fixture-demo-pw';
+		const data = await settle(() => load(event() as never));
+		expect(JSON.stringify(data)).not.toContain('secret-token');
+		expect(Object.keys(data as object).sort()).toEqual(['demoPassword', 'sessionEnded']);
+	});
+});
+
+describe('login action and DEMO_PASSWORD', () => {
+	it('sends the typed password to the API, never the demo value', async () => {
+		env.DEMO_PASSWORD = 'fixture-demo-pw';
+		api.login.mockResolvedValue({ access_token: 'secret-token', expires_at: EXPIRES_AT });
+		await settle(() => actions.default(event({ password: 'typed' }) as never));
+		expect(api.login).toHaveBeenCalledWith('typed');
 	});
 });
 
