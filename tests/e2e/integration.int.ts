@@ -100,7 +100,7 @@ test('apply, screen, review, shortlist and watch the run against the real API', 
 		await applicant.getByRole('button', { name: 'Start screening' }).click();
 
 		const answer = applicant.getByLabel('Your answer');
-		const send = applicant.getByRole('button', { name: 'Send answer' });
+		const send = applicant.getByRole('button', { name: 'Send', exact: true });
 		const done = applicant.getByRole('heading', { name: 'Thank you!' });
 		const ready = done.or(answer.and(applicant.locator(':enabled')));
 		for (let sent = 0; sent < MAX_ANSWERS; sent++) {
