@@ -52,7 +52,7 @@ talent-scout-client/
 │           ├── login/              # login action → sets httpOnly ts_session cookie
 │           ├── logout/             # logout action → clears the cookie
 │           └── (recruiter)/        # recruiter pages and shared layout; the guard itself is in handle
-│               ├── jobs/           # job list (MVP: 1 seeded job, read-only)
+│               ├── jobs/           # job list; new/ and [jobId]/edit/ (job editor); rubric-suggestion/+server.ts (POST)
 │               ├── jobs/[jobId]/   # applicant list
 │               ├── applications/[applicationId]/  # review + decision/resend-invite actions; cv/+server.ts streams the CV
 │               └── runs/[runId]/   # live graph view; load mints sse_token; sse-token/+server.ts (POST) for reconnects
@@ -72,7 +72,8 @@ talent-scout-client/
 | `/s/[token]` | Intro (15-minute duration, rules) → Start → streaming chat, topic indicator `2/4`, countdown from `deadline_at`, input locked until `message.completed` → finish screen. 404/410 errors → friendly message. Resume after refresh. | `GET /sessions/{token}`, `POST .../start`, `GET`/`POST .../messages`, SSE `.../events` |
 | `/dashboard` | Redirect to `/dashboard/jobs` (or `/dashboard/login` when there is no session cookie) | — |
 | `/dashboard/login` | Single password → form action → `access_token` stored only in the httpOnly `ts_session` cookie (never sent to the browser); 401 anywhere → clear the cookie, go to login | `POST /auth/login` |
-| `/dashboard/jobs` | Job table (MVP: 1 seeded job, no create/edit button), applicant count, copy `apply_url` (`https://talentscout.vercel.app/apply/{jobId}` from the server) | `GET /jobs` |
+| `/dashboard/jobs` | Job table (seeded job plus recruiter-created ones, 20 max), "New job" (disabled at 20) and an Edit link per row, applicant count, copy `apply_url` (`https://talentscout.vercel.app/apply/{jobId}` from the server) | `GET /jobs` |
+| `/dashboard/jobs/new`, `/dashboard/jobs/[jobId]/edit` | Job editor: title, markdown description (Write/Preview), status, rubric of 3–6 criteria, "Suggest with AI" (nothing saved until Create/Save). With applicants the rubric is locked and the PATCH body leaves `rubric` out | `POST /jobs`, `PATCH /jobs/{jobId}`, `POST /jobs/rubric-suggestion` (via `jobs/rubric-suggestion/+server.ts`) |
 | `/dashboard/jobs/[jobId]` | Applicant table: name, status badge, overall score, status filter | `GET /jobs/{jobId}/applications` |
 | `/dashboard/applications/[applicationId]` | Left: transcript (quoted applicant messages highlighted). Right: ScoreCard per criterion (score, rationale, evidence quote → click scrolls to the message, `needs_manual` badge), cost, Shortlist/Reject buttons + note, **Get invite link** (for `invited` sessions and `failed` applications; show & copy `invite_url`), CV link, link to the graph | `GET /applications/{applicationId}`, `POST .../decision`, `POST .../resend-invite`, `GET .../cv` |
 | `/dashboard/runs/[runId]` | GraphView: nodes `planner, plan_check, interviewer, judge, guard, scorer, evidence_check, recruiter_gate`; color per status (pending/running/succeeded/failed), edges animate on `edge.traversed`, `attempt` badge on `loop.retry`, event timeline panel + node detail (model, tokens, duration, cost). Live & replay modes. | `GET /graph-runs/{runId}`, `POST /auth/sse-token` (server-side), SSE `/graph-runs/{runId}/events?sse_token=&since_seq=` (browser → Go) |
@@ -102,7 +103,7 @@ talent-scout-client/
 2. No secrets in the browser. Env is private server-side only (`API_BASE_URL`, `USE_MOCK`, `BFF_SHARED_SECRET` via `$app/env/private`, declared in `src/env.ts`); no `PUBLIC_*` vars. No Supabase keys/URLs. `.env` is in `.gitignore`.
 3. Recruiter token only in the httpOnly `ts_session` cookie (`secure` in prod, `sameSite: 'lax'`); never in `localStorage`/`sessionStorage`, page data, URLs (except the 60 s `sse_token`), or logs. `handleError` redacts tokens and query strings.
 4. Never show scores/assessments to the applicant.
-5. Out of scope: applicant accounts, multi-tenant, full i18n, dark mode. Post-MVP (don't build): job create/edit pages, a Playwright suite beyond 1 smoke test.
+5. Out of scope: applicant accounts, multi-tenant, full i18n, dark mode. Post-MVP (don't build): deleting jobs, a Playwright suite beyond the smoke and BFF checks.
 
 ## Definition of Done (per task)
 - [ ] `pnpm check` (svelte-check) 0 errors, `pnpm lint` clean, `pnpm test` green

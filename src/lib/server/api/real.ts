@@ -19,10 +19,16 @@ async function toApiError(res: Response): Promise<ApiError> {
 				'details' in error && typeof error.details === 'object'
 					? (error.details as Record<string, unknown> | null)
 					: null;
-			return new ApiError(res.status, code, message, details);
+			return new ApiError(res.status, code, message, details, retryAfter(res));
 		}
 	}
 	return new ApiError(res.status, 'internal_error', 'The API returned an unexpected response');
+}
+
+function retryAfter(res: Response): number | null {
+	const value = res.headers.get('retry-after')?.trim();
+	const seconds = value ? Number(value) : NaN;
+	return Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
 }
 
 function apiUrl(path: string): string {
@@ -53,9 +59,9 @@ async function getJson<T>(path: string): Promise<T> {
 	return (await send(path)).json();
 }
 
-function jsonInit(body: unknown): RequestInit {
+function jsonInit(body: unknown, method = 'POST'): RequestInit {
 	return {
-		method: 'POST',
+		method,
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(body)
 	};
@@ -75,6 +81,10 @@ export const realApi: TalentScoutApi = {
 	listJobs: () => getJson('/jobs'),
 	getJob: (jobId) => getJson(`/jobs/${seg(jobId)}`),
 	getPublicJob: (jobId) => getJson(`/jobs/${seg(jobId)}/public`),
+	createJob: (job) => postJson('/jobs', job),
+	updateJob: async (jobId, patch) =>
+		(await send(`/jobs/${seg(jobId)}`, jsonInit(patch, 'PATCH'))).json(),
+	suggestRubric: (input) => postJson('/jobs/rubric-suggestion', input),
 
 	apply: async (jobId, form) =>
 		(await send(`/jobs/${seg(jobId)}/applications`, { method: 'POST', body: form })).json(),

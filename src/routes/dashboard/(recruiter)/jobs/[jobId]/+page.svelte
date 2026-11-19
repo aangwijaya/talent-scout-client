@@ -1,5 +1,7 @@
 <script lang="ts">
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Pencil from '@lucide/svelte/icons/pencil';
 	import Search from '@lucide/svelte/icons/search';
 	import Users from '@lucide/svelte/icons/users';
 	import { resolve } from '$app/paths';
@@ -38,8 +40,14 @@
 		showAll: 'Show all applicants',
 		loading: 'Loading applicants',
 		rubric: 'Rubric',
-		weight: 'weight'
+		weight: 'weight',
+		editJob: 'Edit job'
 	};
+	const SAVED = { created: 'Job created', updated: 'Changes saved' } as const;
+	const saved = $derived.by(() => {
+		const value = page.url.searchParams.get('saved');
+		return value === 'created' || value === 'updated' ? SAVED[value] : null;
+	});
 
 	const filters = $derived([
 		{ status: null, label: 'All' },
@@ -107,8 +115,26 @@
 			{count === 1 ? 'applicant' : 'applicants'} · {jobStatus[data.job.status]}
 		</p>
 	</div>
-	{@render copyLink('shrink-0 max-sm:h-11 max-sm:w-full')}
+	<div class="flex shrink-0 flex-col gap-2 sm:flex-row">
+		<Button
+			href={resolve('/dashboard/(recruiter)/jobs/[jobId]/edit', { jobId: data.job.id })}
+			variant="secondary"
+			class="max-sm:h-11 max-sm:w-full"
+		>
+			<Pencil size={16} aria-hidden="true" />{COPY.editJob}
+		</Button>
+		{@render copyLink('max-sm:h-11 max-sm:w-full')}
+	</div>
 </div>
+
+{#if saved}
+	<p
+		role="status"
+		class="mb-6 flex items-center gap-2 rounded-card border border-success bg-card p-3 text-body-sm text-success-text"
+	>
+		<CircleCheck size={16} aria-hidden="true" />{saved}
+	</p>
+{/if}
 
 <div class="mb-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
 	<JobDescription source={data.job.description} size="sm" collapsedHeight={150} fade={56} />

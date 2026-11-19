@@ -42,6 +42,10 @@ export type DecisionRequest = Schemas['DecisionRequest'];
 export type ResendInviteResponse = Schemas['ResendInviteResponse'];
 export type SendMessageResponse = Schemas['SendMessageResponse'];
 export type RetryResponse = Schemas['RetryResponse'];
+export type JobCreateRequest = Schemas['JobCreateRequest'];
+export type JobUpdateRequest = Schemas['JobUpdateRequest'];
+export type RubricSuggestionRequest = Schemas['RubricSuggestionRequest'];
+export type RubricSuggestionResponse = Schemas['RubricSuggestionResponse'];
 
 export type JobList = Json<'listJobs'>;
 export type ApplicationList = Json<'listApplications'>;
@@ -82,7 +86,9 @@ export class ApiError extends Error {
 		readonly status: number,
 		readonly code: ApiErrorCode,
 		message: string,
-		readonly details: Record<string, unknown> | null = null
+		readonly details: Record<string, unknown> | null = null,
+		/** From `Retry-After` on a 429, in seconds. */
+		readonly retryAfterSeconds: number | null = null
 	) {
 		super(message);
 		this.name = 'ApiError';
@@ -101,6 +107,10 @@ export interface TalentScoutApi {
 	listJobs(): Promise<JobList>;
 	getJob(jobId: string): Promise<Job>;
 	getPublicJob(jobId: string): Promise<PublicJob>;
+	createJob(job: JobCreateRequest): Promise<Job>;
+	/** Leave `rubric` out once the job has applications: the API refuses any rubric then. */
+	updateJob(jobId: string, patch: JobUpdateRequest): Promise<Job>;
+	suggestRubric(input: RubricSuggestionRequest): Promise<RubricSuggestionResponse>;
 
 	/** `form` carries the multipart fields `name`, `email` and `cv`. */
 	apply(jobId: string, form: FormData): Promise<ApplyResponse>;

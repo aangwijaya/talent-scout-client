@@ -8,10 +8,14 @@ vi.mock('$app/paths', () => ({
 			.replace('/(recruiter)', '')
 			.replace(/\[(\w+)\]/g, (_: string, key: string) => params[key] ?? '')
 }));
-vi.mock('$app/state', () => ({
+const state = vi.hoisted(() => ({
 	navigating: { to: null },
-	page: { route: { id: '/dashboard/(recruiter)/jobs/[jobId]' } }
+	page: {
+		route: { id: '/dashboard/(recruiter)/jobs/[jobId]' },
+		url: new URL('http://app.test/dashboard/jobs/job-1')
+	}
 }));
+vi.mock('$app/state', () => state);
 
 const { default: Page } = await import('./+page.svelte');
 
@@ -60,6 +64,16 @@ function page(
 }
 
 describe('applicants page', () => {
+	it('links to the job editor and confirms a save from ?saved=', () => {
+		expect(page([])).toContain('href="/dashboard/jobs/job-1/edit"');
+		expect(page([])).not.toContain('Job created');
+		state.page.url = new URL('http://app.test/dashboard/jobs/job-1?saved=created');
+		expect(page([])).toContain('Job created');
+		state.page.url = new URL('http://app.test/dashboard/jobs/job-1?saved=updated');
+		expect(page([])).toContain('Changes saved');
+		state.page.url = new URL('http://app.test/dashboard/jobs/job-1');
+	});
+
 	it('renders each applicant in the table and in the phone list, never truncated', () => {
 		const body = page([application]);
 		expect(body.split(longName)).toHaveLength(3);
