@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit';
+import { isRedirect, json } from '@sveltejs/kit';
 import type { SuggestResult } from '$lib/components/job-form';
 import { api } from '$lib/server/api';
 import { ApiError } from '$lib/server/api/types';
@@ -21,6 +21,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { rubric } = await api.suggestRubric({ title, description });
 		return answer({ ok: true, rubric });
 	} catch (err) {
+		// A token the API rejects makes the API layer clear the cookie and redirect to login; the
+		// editor's fetch would follow that to HTML, so say "session ended" in JSON instead.
+		if (isRedirect(err)) return answer({ ok: false, status: 401, retry_after_seconds: null }, 401);
 		if (!(err instanceof ApiError)) throw err;
 		return answer(
 			{ ok: false, status: err.status, retry_after_seconds: err.retryAfterSeconds },
