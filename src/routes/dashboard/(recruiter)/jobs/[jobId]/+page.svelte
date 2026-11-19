@@ -7,6 +7,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import JobDescription from '$lib/components/JobDescription.svelte';
 	import OverallScore from '$lib/components/OverallScore.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import TableSkeleton from '$lib/components/TableSkeleton.svelte';
@@ -35,7 +36,9 @@
 		noneDescription: 'Share the apply link and applications will show up here.',
 		noMatchDescription: 'Try another status, or show everyone who applied.',
 		showAll: 'Show all applicants',
-		loading: 'Loading applicants'
+		loading: 'Loading applicants',
+		rubric: 'Rubric',
+		weight: 'weight'
 	};
 
 	const filters = $derived([
@@ -105,6 +108,39 @@
 		</p>
 	</div>
 	{@render copyLink('shrink-0 max-sm:h-11 max-sm:w-full')}
+</div>
+
+<div class="mb-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+	<JobDescription source={data.job.description} size="sm" collapsedHeight={150} fade={56} />
+
+	<section
+		aria-labelledby="rubric-title"
+		class="rounded-panel border border-line bg-card px-6 py-5"
+	>
+		<div class="flex items-baseline justify-between gap-3">
+			<h2 id="rubric-title" class="text-base font-semibold text-ink">{COPY.rubric}</h2>
+			<span class="text-caption text-helper">{COPY.weight}</span>
+		</div>
+		<ul class="mt-3">
+			{#each data.job.rubric as criterion (criterion.key)}
+				<li class="flex items-start justify-between gap-3 border-t border-line py-3 last:pb-0">
+					<div class="min-w-0">
+						<p class="text-body-sm font-medium text-body">{criterion.label}</p>
+						<p class="mt-0.5 text-[13px] text-helper">{criterion.description}</p>
+					</div>
+					<span
+						class={[
+							'shrink-0 rounded-full px-2 py-0.5 font-mono text-caption',
+							criterion.weight > 1 ? 'bg-wash text-brand' : 'bg-subtle text-muted'
+						]}
+						><span aria-hidden="true">×{criterion.weight}</span><span class="sr-only"
+							>Weight {criterion.weight}</span
+						></span
+					>
+				</li>
+			{/each}
+		</ul>
+	</section>
 </div>
 
 <!-- A GET form: each pill submits its status, and "All" submits none. -->

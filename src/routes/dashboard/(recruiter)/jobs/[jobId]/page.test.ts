@@ -31,7 +31,12 @@ const job = {
 	title: 'Senior Frontend Engineer',
 	status: 'open',
 	apply_url: 'https://talentscout.vercel.app/apply/job-1',
-	application_count: 1
+	application_count: 1,
+	description: `## About\n\n${'We build **screening** tools. '.repeat(40)}`,
+	rubric: [
+		{ key: 'frontend_depth', label: 'Frontend depth', description: 'Svelte, state', weight: 2 },
+		{ key: 'communication', label: 'Communication', description: 'Clear tradeoffs', weight: 1 }
+	]
 } as Job;
 
 const longName = 'Aleksandra Wiśniewska-Kowalczyk';
@@ -65,6 +70,29 @@ describe('applicants page', () => {
 		expect(body).toContain('4.50');
 		expect(body).toContain('Completed');
 		expect(body).toContain('Nov 4, 2026');
+	});
+
+	it('shows the job description collapsed, as markdown, without a table of contents', () => {
+		const body = page([application]);
+		expect(body).toContain('<h2 id="jd-about">About</h2>');
+		expect(body).toContain('<strong>screening</strong>');
+		expect(body).toMatch(/aria-expanded="false"[^>]*>(<!--[^>]*>| )*Show full description/);
+		expect(body).toContain('max-height: 150px');
+		expect(body).not.toContain('On this page');
+	});
+
+	it('lists the rubric criteria with their weights', () => {
+		const body = page([application]);
+		expect(body).toContain('Frontend depth');
+		expect(body).toContain('Clear tradeoffs');
+		// A label on a plain span isn't announced, so the weight is read from sr-only text.
+		expect(body).toMatch(
+			/bg-wash text-brand[^>]*><span aria-hidden="true">×2<\/span><span class="sr-only">Weight 2<\/span>/
+		);
+		expect(body).toMatch(
+			/bg-subtle text-muted[^>]*><span aria-hidden="true">×1<\/span><span class="sr-only">Weight 1<\/span>/
+		);
+		expect(body).not.toContain('aria-label="Weight');
 	});
 
 	it('labels the filter pills as a group and marks the active one', () => {
