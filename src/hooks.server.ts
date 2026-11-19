@@ -1,7 +1,12 @@
 import { API_BASE_URL, BFF_SHARED_SECRET } from '$app/env/private';
-import { isRedirect, type RequestEvent } from '@sveltejs/kit';
+import { isRedirect, json, type RequestEvent } from '@sveltejs/kit';
 import type { Handle, HandleFetch, HandleServerError } from '@sveltejs/kit/hooks';
-import { isDashboardRoute, isRecruiterRoute, requireRecruiter } from '$lib/server/guards';
+import {
+	isDashboardRoute,
+	isJsonEndpoint,
+	isRecruiterRoute,
+	requireRecruiter
+} from '$lib/server/guards';
 import { redact } from '$lib/server/redact';
 import { readSession } from '$lib/server/session';
 
@@ -22,6 +27,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (!isDashboardRoute(event)) return resolve(event);
 
 	// Recruiter pages, actions and redirects must never be served from a shared or back/forward cache.
+	if (!event.locals.recruiter && isJsonEndpoint(event)) {
+		return noStore(
+			json({ error: { code: 'unauthorized', message: 'Sign in again' } }, { status: 401 })
+		);
+	}
 	try {
 		if (isRecruiterRoute(event)) requireRecruiter(event);
 	} catch (thrown) {

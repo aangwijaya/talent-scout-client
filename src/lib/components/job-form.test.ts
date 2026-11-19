@@ -146,6 +146,11 @@ describe('applySuggestion', () => {
 		expect(applySuggestion(current, { ok: true, rubric })).toEqual({ rubric, error: null });
 	});
 
+	it('keeps the criteria on 401 and reports the ended session', () => {
+		const outcome = applySuggestion(current, { ok: false, status: 401, retry_after_seconds: null });
+		expect(outcome).toEqual({ rubric: current, error: { kind: 'signed_out' } });
+	});
+
 	it('keeps the criteria on 429 and reports the wait in minutes, rounded up', () => {
 		const outcome = applySuggestion(current, {
 			ok: false,

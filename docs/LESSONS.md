@@ -23,6 +23,22 @@ Rules:
 
 ## Entries
 
+### 2026-11-19 — #78 A login redirect is the wrong answer to `fetch`
+- **Context:** "Suggest with AI" posts JSON to a guarded `+server.ts` endpoint
+- **Problem:** with an expired session the guard's 303 was followed to the login page, so the script navigated away (to a `redirectTo` that answers 405 on GET) and the unsaved job form was lost
+- **Cause:** `handle` treated every recruiter route like a page
+- **Lesson:** a guarded endpoint that page scripts `fetch` goes in `JSON_ENDPOINTS` (`src/lib/server/guards.ts`) so `handle` answers a JSON 401; the caller keeps its state and offers sign-in in a new tab
+- **Follow-up:** unit test in `src/hooks.server.test.ts`, e2e in `tests/e2e/jobs.e2e.ts`
+- **Repeated?:** first time
+
+### 2026-11-19 — #76 `isActionFailure` narrows a typed failure to `never`
+- **Context:** action tests that cast the result to `ActionFailure<{ errors: … }>`
+- **Problem:** `if (isActionFailure(result)) result.data.errors` fails `svelte-check`: "Property 'data' does not exist on type 'never'"
+- **Cause:** the guard is `e is ActionFailure<undefined>`; its intersection with the cast type has conflicting `data` types, so TypeScript reduces it to `never`
+- **Lesson:** assert `expect(isActionFailure(result)).toBe(true)` on its own line, then read `result.data` from the cast type; use `isActionFailure(r) && r.status` only for fields that are not `data`
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-18 — #69 A UI state that lasts 100 ms needs a paused clock in Playwright
 - **Context:** proving the typing indicator shows after Start and before the first mock delta
 - **Problem:** mock mode replays the first delta 60–150 ms after Start, so an `expect(...).toBeVisible()` would pass or fail by luck
