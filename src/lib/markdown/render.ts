@@ -38,7 +38,7 @@ function plainText(inline: Token): string {
 export function renderMarkdown(source: string): { html: string; headings: Heading[] } {
 	const tokens = md.parse(source, {});
 	const headings: Heading[] = [];
-	const seen = new Map<string, number>();
+	const used = new Set<string>();
 
 	tokens.forEach((token, i) => {
 		if (token.type === 'heading_open' || token.type === 'heading_close') {
@@ -49,9 +49,10 @@ export function renderMarkdown(source: string): { html: string; headings: Headin
 			const text = plainText(tokens[i + 1]);
 			// Prefixed so a heading such as "Apply" can't clash with an id elsewhere on the page.
 			const base = `jd-${slugify(text)}`;
-			const count = (seen.get(base) ?? 0) + 1;
-			seen.set(base, count);
-			const id = count === 1 ? base : `${base}-${count}`;
+			// Check against every id already given out: "Perks", "Perks", "Perks 2" must not share one.
+			let id = base;
+			for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+			used.add(id);
 			token.attrSet('id', id);
 			headings.push({ id, text, level: token.tag === 'h2' ? 2 : 3 });
 		}

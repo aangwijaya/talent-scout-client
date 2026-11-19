@@ -64,6 +64,13 @@ describe('renderMarkdown', () => {
 		]);
 	});
 
+	it('never reuses an id when a heading text ends in a number', () => {
+		const { headings } = renderMarkdown('## Perks\n\n## Perks\n\n## Perks 2');
+		const ids = headings.map((h) => h.id);
+		expect(new Set(ids).size).toBe(ids.length);
+		expect(ids).toEqual(['jd-perks', 'jd-perks-2', 'jd-perks-2-2']);
+	});
+
 	it('keeps the line breaks of plain text', () => {
 		const { html } = renderMarkdown('Line one\nLine two\n\nNew paragraph');
 		expect(html).toBe('<p>Line one<br>\nLine two</p>\n<p>New paragraph</p>\n');

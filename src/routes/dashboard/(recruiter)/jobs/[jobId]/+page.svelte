@@ -129,11 +129,13 @@
 						<p class="mt-0.5 text-[13px] text-helper">{criterion.description}</p>
 					</div>
 					<span
-						aria-label="Weight {criterion.weight}"
 						class={[
 							'shrink-0 rounded-full px-2 py-0.5 font-mono text-caption',
 							criterion.weight > 1 ? 'bg-wash text-brand' : 'bg-subtle text-muted'
-						]}>×{criterion.weight}</span
+						]}
+						><span aria-hidden="true">×{criterion.weight}</span><span class="sr-only"
+							>Weight {criterion.weight}</span
+						></span
 					>
 				</li>
 			{/each}

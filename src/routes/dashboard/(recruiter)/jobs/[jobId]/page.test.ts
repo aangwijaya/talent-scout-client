@@ -85,8 +85,14 @@ describe('applicants page', () => {
 		const body = page([application]);
 		expect(body).toContain('Frontend depth');
 		expect(body).toContain('Clear tradeoffs');
-		expect(body).toMatch(/aria-label="Weight 2"[^>]*bg-wash text-brand[^>]*>×2/);
-		expect(body).toMatch(/aria-label="Weight 1"[^>]*bg-subtle text-muted[^>]*>×1/);
+		// A label on a plain span isn't announced, so the weight is read from sr-only text.
+		expect(body).toMatch(
+			/bg-wash text-brand[^>]*><span aria-hidden="true">×2<\/span><span class="sr-only">Weight 2<\/span>/
+		);
+		expect(body).toMatch(
+			/bg-subtle text-muted[^>]*><span aria-hidden="true">×1<\/span><span class="sr-only">Weight 1<\/span>/
+		);
+		expect(body).not.toContain('aria-label="Weight');
 	});
 
 	it('labels the filter pills as a group and marks the active one', () => {
