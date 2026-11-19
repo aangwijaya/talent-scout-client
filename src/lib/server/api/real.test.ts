@@ -52,6 +52,32 @@ describe('realApi', () => {
 		}
 	});
 
+	it('creates, edits and suggests with the contract methods and paths', async () => {
+		event.fetch.mockImplementation(async () => json(200, {}));
+		const rubric = [{ key: 'k1', label: 'L1', description: 'description', weight: 1 }];
+		await realApi.createJob({ title: 't', description: 'd', rubric });
+		await realApi.updateJob('a/b', { title: 't' });
+		await realApi.suggestRubric({ title: 't', description: 'd' });
+		const calls = event.fetch.mock.calls.map(([url, init]) => [url, init?.method, init?.body]);
+		expect(calls).toEqual([
+			['http://api.test/api/v1/jobs', 'POST', JSON.stringify({ title: 't', description: 'd', rubric })],
+			['http://api.test/api/v1/jobs/a%2Fb', 'PATCH', '{"title":"t"}'],
+			['http://api.test/api/v1/jobs/rubric-suggestion', 'POST', '{"title":"t","description":"d"}']
+		]);
+	});
+
+	it('keeps Retry-After seconds on a rate-limited error', async () => {
+		event.fetch.mockResolvedValue(
+			new Response(JSON.stringify({ error: { code: 'rate_limited', message: 'wait' } }), {
+				status: 429,
+				headers: { 'Retry-After': '125' }
+			})
+		);
+		const error = await caught(realApi.suggestRubric({ title: 't', description: 'd' }));
+		expect(error).toBeInstanceOf(ApiError);
+		expect((error as ApiError).retryAfterSeconds).toBe(125);
+	});
+
 	it('sends JSON bodies and the status filter', async () => {
 		event.fetch.mockImplementation(async () => json(200, { items: [] }));
 		await realApi.sendMessage('t', 'hello');
