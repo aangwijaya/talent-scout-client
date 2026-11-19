@@ -65,7 +65,30 @@ export interface paths {
 		/** List jobs */
 		get: operations['listJobs'];
 		put?: never;
-		post?: never;
+		/** Create a job */
+		post: operations['createJob'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/jobs/rubric-suggestion': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Suggest a draft rubric for a job
+		 * @description Asks the model for 3-6 rubric criteria. Nothing is stored; the recruiter
+		 *     edits the draft before saving. The model output is retried once on
+		 *     invalid output, then the endpoint returns `llm_unavailable`.
+		 */
+		post: operations['suggestJobRubric'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -86,7 +109,12 @@ export interface paths {
 		delete?: never;
 		options?: never;
 		head?: never;
-		patch?: never;
+		/**
+		 * Edit a job
+		 * @description Any subset of `title`, `description`, `rubric` and `status`. The rubric
+		 *     cannot change once the job has any application.
+		 */
+		patch: operations['updateJob'];
 		trace?: never;
 	};
 	'/jobs/{jobId}/public': {
@@ -396,6 +424,25 @@ export interface components {
 			created_at: string;
 			/** Format: date-time */
 			updated_at: string;
+		};
+		JobCreateRequest: {
+			title: string;
+			description: string;
+			rubric: components['schemas']['RubricCriterion'][];
+			status?: components['schemas']['JobStatus'];
+		};
+		JobUpdateRequest: {
+			title?: string;
+			description?: string;
+			rubric?: components['schemas']['RubricCriterion'][];
+			status?: components['schemas']['JobStatus'];
+		};
+		RubricSuggestionRequest: {
+			title: string;
+			description: string;
+		};
+		RubricSuggestionResponse: {
+			rubric: components['schemas']['RubricCriterion'][];
 		};
 		PublicJob: {
 			/** Format: uuid */
@@ -804,6 +851,69 @@ export interface operations {
 			401: components['responses']['Unauthorized'];
 		};
 	};
+	createJob: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['JobCreateRequest'];
+			};
+		};
+		responses: {
+			/** @description Job created. */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Job'];
+				};
+			};
+			400: components['responses']['ValidationFailed'];
+			401: components['responses']['Unauthorized'];
+			409: components['responses']['Conflict'];
+		};
+	};
+	suggestJobRubric: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['RubricSuggestionRequest'];
+			};
+		};
+		responses: {
+			/** @description Suggested rubric. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['RubricSuggestionResponse'];
+				};
+			};
+			400: components['responses']['ValidationFailed'];
+			401: components['responses']['Unauthorized'];
+			429: components['responses']['RateLimited'];
+			/** @description The model could not produce a valid suggestion. */
+			502: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Error'];
+				};
+			};
+		};
+	};
 	getJob: {
 		parameters: {
 			query?: never;
@@ -826,6 +936,36 @@ export interface operations {
 			};
 			401: components['responses']['Unauthorized'];
 			404: components['responses']['NotFound'];
+		};
+	};
+	updateJob: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				jobId: components['parameters']['JobId'];
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'application/json': components['schemas']['JobUpdateRequest'];
+			};
+		};
+		responses: {
+			/** @description Updated job. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['Job'];
+				};
+			};
+			400: components['responses']['ValidationFailed'];
+			401: components['responses']['Unauthorized'];
+			404: components['responses']['NotFound'];
+			409: components['responses']['Conflict'];
 		};
 	};
 	getPublicJob: {
