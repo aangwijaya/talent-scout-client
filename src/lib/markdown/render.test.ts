@@ -20,7 +20,9 @@ describe('renderMarkdown', () => {
 		expect(html).not.toContain('<a');
 		expect(html).toContain('[a](javascript:alert(1))');
 
-		const safe = renderMarkdown('[site](https://x.dev) [mail](mailto:hr@x.dev) [old](http://x.dev)');
+		const safe = renderMarkdown(
+			'[site](https://x.dev) [mail](mailto:hr@x.dev) [old](http://x.dev)'
+		);
 		expect(safe.html).toContain(
 			'<a href="https://x.dev" target="_blank" rel="noopener noreferrer">site</a>'
 		);
