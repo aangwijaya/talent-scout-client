@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { expect, request, test, type Locator, type Page } from '@playwright/test';
-import { DEMO_PORT } from './ports';
+import { DEMO_PORT, REAL_PORT } from './ports';
 
 // Fixture values from src/lib/server/api/fixtures (that module imports `$lib`, which only Vite
 // resolves, so the ids are repeated here).
@@ -218,5 +218,80 @@ test.describe('public demo', () => {
 		await expect(page.getByRole('note')).toContainText(
 			'This is a public demo: anyone can read what you submit. Use a sample CV, not your real one.'
 		);
+	});
+});
+
+test.describe('job description', () => {
+	// Served by `fake-api.ts` behind the real-API preview; the mock fixtures have one short JD.
+	const LONG_JD = `http://localhost:${REAL_PORT}/apply/0d1c5c3a-2f5e-4c39-9d6b-1f6c2b9a7e01`;
+	const SHORT_JD = `http://localhost:${REAL_PORT}/apply/0d1c5c3a-2f5e-4c39-9d6b-1f6c2b9a7e02`;
+	const isPhone = (page: Page) => (page.viewportSize()?.width ?? 0) < 1024;
+	const toggle = (page: Page) => page.getByRole('button', { name: /Show (full description|less)/ });
+	const applyLink = (page: Page) => page.getByRole('link', { name: 'Apply', exact: true });
+
+	test('a long JD starts collapsed, expands, and stays expanded after a form error', async ({
+		page
+	}) => {
+		await page.goto(LONG_JD);
+		const body = page.locator('[data-collapsed]');
+		const last = page.getByRole('heading', { name: 'How to apply' });
+		await expect(toggle(page)).toHaveAttribute('aria-expanded', 'false');
+		await expect(body).toHaveAttribute('data-collapsed', 'true');
+		expect((await body.boundingBox())?.height).toBeLessThanOrEqual(300);
+
+		await toggle(page).click();
+		await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true');
+		await expect(toggle(page)).toHaveText('Show less');
+		await expect(body).toHaveAttribute('data-collapsed', 'false');
+		expect((await body.boundingBox())?.height).toBeGreaterThan(300);
+		await last.scrollIntoViewIfNeeded();
+		await expect(last).toBeInViewport();
+
+		await page.getByLabel('Full name').fill('Rani Putri');
+		await page.getByLabel('Email').fill('rani@example.com');
+		await page.locator('input[name="cv"]').setInputFiles({
+			name: 'cv.pdf',
+			mimeType: 'application/pdf',
+			buffer: Buffer.from('%PDF-1.4 e2e CV')
+		});
+		await page.getByRole('button', { name: 'Submit application' }).click();
+		await expect(page.getByRole('alert')).toBeVisible();
+		await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true');
+	});
+
+	test('the table of contents expands the JD and jumps to a section', async ({ page }) => {
+		await page.goto(LONG_JD);
+		const toc = page.getByRole('navigation', { name: 'On this page' });
+		await expect(toc.getByRole('link')).toHaveCount(4);
+		await toc.getByRole('link', { name: 'How to apply' }).click();
+		await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true');
+		await expect(page.getByRole('heading', { name: 'How to apply' })).toBeInViewport();
+	});
+
+	test('on a phone the sticky Apply button reaches the form', async ({ page }) => {
+		test.skip(!isPhone(page), 'the Apply bar is for screens below 1024px');
+		await page.goto(LONG_JD);
+		await expect(applyLink(page)).toBeInViewport();
+		await applyLink(page).click();
+		await expect(page.getByLabel('Full name')).toBeInViewport();
+		await expect(page.getByLabel('Full name')).toBeFocused();
+		await expect(applyLink(page)).toBeHidden();
+		await expectNoHorizontalScroll(page);
+	});
+
+	test('on desktop the form sits beside the JD, without an Apply bar', async ({ page }) => {
+		test.skip(isPhone(page), 'two columns from 1024px');
+		await page.goto(LONG_JD);
+		await expect(page.getByLabel('Full name')).toBeInViewport();
+		await expect(applyLink(page)).toBeHidden();
+	});
+
+	test('a short JD has no toggle, table of contents or Apply bar', async ({ page }) => {
+		await page.goto(SHORT_JD);
+		await expect(page.getByText('Own frontend quality.')).toBeVisible();
+		await expect(page.locator('.md br')).toHaveCount(1);
+		await expect(toggle(page)).toHaveCount(0);
+		await expect(page.getByRole('navigation', { name: 'On this page' })).toHaveCount(0);
+		await expect(applyLink(page)).toHaveCount(0);
 	});
 });

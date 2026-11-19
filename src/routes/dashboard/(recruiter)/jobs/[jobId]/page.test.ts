@@ -31,7 +31,12 @@ const job = {
 	title: 'Senior Frontend Engineer',
 	status: 'open',
 	apply_url: 'https://talentscout.vercel.app/apply/job-1',
-	application_count: 1
+	application_count: 1,
+	description: `## About\n\n${'We build **screening** tools. '.repeat(40)}`,
+	rubric: [
+		{ key: 'frontend_depth', label: 'Frontend depth', description: 'Svelte, state', weight: 2 },
+		{ key: 'communication', label: 'Communication', description: 'Clear tradeoffs', weight: 1 }
+	]
 } as Job;
 
 const longName = 'Aleksandra Wiśniewska-Kowalczyk';
@@ -65,6 +70,23 @@ describe('applicants page', () => {
 		expect(body).toContain('4.50');
 		expect(body).toContain('Completed');
 		expect(body).toContain('Nov 4, 2026');
+	});
+
+	it('shows the job description collapsed, as markdown, without a table of contents', () => {
+		const body = page([application]);
+		expect(body).toContain('<h2 id="jd-about">About</h2>');
+		expect(body).toContain('<strong>screening</strong>');
+		expect(body).toMatch(/aria-expanded="false"[^>]*>(<!--[^>]*>| )*Show full description/);
+		expect(body).toContain('max-height: 150px');
+		expect(body).not.toContain('On this page');
+	});
+
+	it('lists the rubric criteria with their weights', () => {
+		const body = page([application]);
+		expect(body).toContain('Frontend depth');
+		expect(body).toContain('Clear tradeoffs');
+		expect(body).toMatch(/aria-label="Weight 2"[^>]*bg-wash text-brand[^>]*>×2/);
+		expect(body).toMatch(/aria-label="Weight 1"[^>]*bg-subtle text-muted[^>]*>×1/);
 	});
 
 	it('labels the filter pills as a group and marks the active one', () => {
