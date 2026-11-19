@@ -1,3 +1,4 @@
+import { redirect } from '@sveltejs/kit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockApi } from '$lib/server/api/mock';
 import { ApiError } from '$lib/server/api/types';
@@ -48,6 +49,15 @@ describe('POST rubric-suggestion', () => {
 		const res = await call(input);
 		expect(res.status).toBe(502);
 		expect(await res.json()).toEqual({ ok: false, status: 502, retry_after_seconds: null });
+	});
+
+	it('answers a JSON 401 when the API rejects the token and the API layer redirects to login', async () => {
+		vi.spyOn(mockApi, 'suggestRubric').mockImplementation(() =>
+			redirect(303, '/dashboard/login?reason=session_ended')
+		);
+		const res = await call(input);
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual({ ok: false, status: 401, retry_after_seconds: null });
 	});
 
 	it('rejects a body that is not a title and description', async () => {
