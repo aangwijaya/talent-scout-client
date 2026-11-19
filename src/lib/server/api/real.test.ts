@@ -60,7 +60,11 @@ describe('realApi', () => {
 		await realApi.suggestRubric({ title: 't', description: 'd' });
 		const calls = event.fetch.mock.calls.map(([url, init]) => [url, init?.method, init?.body]);
 		expect(calls).toEqual([
-			['http://api.test/api/v1/jobs', 'POST', JSON.stringify({ title: 't', description: 'd', rubric })],
+			[
+				'http://api.test/api/v1/jobs',
+				'POST',
+				JSON.stringify({ title: 't', description: 'd', rubric })
+			],
 			['http://api.test/api/v1/jobs/a%2Fb', 'PATCH', '{"title":"t"}'],
 			['http://api.test/api/v1/jobs/rubric-suggestion', 'POST', '{"title":"t","description":"d"}']
 		]);

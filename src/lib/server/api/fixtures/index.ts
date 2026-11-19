@@ -72,6 +72,28 @@ const rubric: RubricCriterion[] = [
 	}
 ];
 
+/** The canned `POST /jobs/rubric-suggestion` answer. */
+export const suggestedRubric: RubricCriterion[] = [
+	{
+		key: 'product_sense',
+		label: 'Product sense',
+		description: 'Turns recruiter needs into small, shippable features',
+		weight: 2
+	},
+	{
+		key: 'frontend_craft',
+		label: 'Frontend craft',
+		description: 'Accessible, fast interfaces with Svelte and TypeScript',
+		weight: 3
+	},
+	{
+		key: 'collaboration',
+		label: 'Collaboration',
+		description: 'Works in the open with design and backend',
+		weight: 1
+	}
+];
+
 const jobDescription =
 	'Build the recruiter dashboard and applicant chat in SvelteKit, and own frontend quality with the team.';
 

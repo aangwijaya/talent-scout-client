@@ -1,4 +1,4 @@
-import { isActionFailure, isRedirect } from '@sveltejs/kit';
+import { isActionFailure, isRedirect, type ActionFailure } from '@sveltejs/kit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockApi } from '$lib/server/api/mock';
 import { ApiError, type Job } from '$lib/server/api/types';
@@ -33,8 +33,12 @@ function form(overrides: Record<string, string> = {}): FormData {
 	return data;
 }
 
-const submit = (data: FormData) =>
-	actions.default({ request: new Request('http://x', { method: 'POST', body: data }) } as never);
+type Failure = { values: { title: string; rubric: unknown[] }; errors: Record<string, string> };
+
+const submit = async (data: FormData) =>
+	(await actions.default({
+		request: new Request('http://x', { method: 'POST', body: data })
+	} as never)) as ActionFailure<Failure>;
 
 describe('new job', () => {
 	it('loads the job count for the 20-job cap', async () => {
@@ -57,15 +61,18 @@ describe('new job', () => {
 			}))
 		});
 		expect(isRedirect(thrown) && thrown.status).toBe(303);
-		expect(isRedirect(thrown) && thrown.location).toMatch(/^\/dashboard\/jobs\/[^/]+\?saved=created$/);
+		expect(isRedirect(thrown) && thrown.location).toMatch(
+			/^\/dashboard\/jobs\/[^/]+\?saved=created$/
+		);
 	});
 
 	it('fails with field errors before calling the API when the form breaks the rules', async () => {
 		const spy = vi.spyOn(mockApi, 'createJob');
 		const result = await submit(form({ title: 'ab', 'rubric[1].key': '1bad' }));
 		expect(spy).not.toHaveBeenCalled();
-		expect(isActionFailure(result) && result.status).toBe(400);
-		expect(isActionFailure(result) && Object.keys(result.data.errors)).toEqual(
+		expect(isActionFailure(result)).toBe(true);
+		expect(result.status).toBe(400);
+		expect(Object.keys(result.data.errors)).toEqual(
 			expect.arrayContaining(['title', 'rubric[1].key'])
 		);
 	});
@@ -75,7 +82,7 @@ describe('new job', () => {
 			new ApiError(400, 'validation_failed', 'key is taken', { field: 'rubric[2].key' })
 		);
 		const result = await submit(form());
-		expect(isActionFailure(result) && result.data.errors).toEqual({ 'rubric[2].key': 'key is taken' });
+		expect(result.data.errors).toEqual({ 'rubric[2].key': 'key is taken' });
 	});
 
 	it('shows the 20-job message on 409', async () => {
@@ -83,15 +90,14 @@ describe('new job', () => {
 			new ApiError(409, 'invalid_state', 'too many jobs')
 		);
 		const result = await submit(form());
-		expect(isActionFailure(result) && result.status).toBe(409);
-		expect(isActionFailure(result) && result.data.errors).toEqual({ form: LIMIT_MESSAGE });
+		expect(result.status).toBe(409);
+		expect(result.data.errors).toEqual({ form: LIMIT_MESSAGE });
 	});
 
 	it('keeps the submitted values on failure', async () => {
 		const result = await submit(form({ title: 'ab' }));
-		const values = isActionFailure(result) ? result.data.values : null;
-		expect(values?.rubric).toHaveLength(3);
-		expect(values?.title).toBe('ab');
+		expect(result.data.values.rubric).toHaveLength(3);
+		expect(result.data.values.title).toBe('ab');
 	});
 
 	it('returns a Job from the mock create', async () => {

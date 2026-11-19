@@ -61,13 +61,16 @@ describe('validateJob (docs/API.md "Job validation")', () => {
 		['rubric[1].key', { rubric: [criterion('one'), criterion('1bad'), criterion('three')] }],
 		['rubric[2].key', { rubric: [criterion('one'), criterion('two'), criterion('one')] }],
 		['rubric[0].key', { rubric: [criterion('o'), criterion('two'), criterion('three')] }],
-		['rubric[0].label', { rubric: [{ ...criterion('one'), label: 'a' }, ...valid.rubric.slice(1)] }],
+		[
+			'rubric[0].label',
+			{ rubric: [{ ...criterion('one'), label: 'a' }, ...valid.rubric.slice(1)] }
+		],
 		[
 			'rubric[0].description',
 			{ rubric: [{ ...criterion('one'), description: 'too short' }, ...valid.rubric.slice(1)] }
 		],
 		['rubric[0].weight', { rubric: [criterion('one', 4), ...valid.rubric.slice(1)] }]
-	] as const)('flags %s', (field, patch) => {
+	] satisfies [string, Partial<JobValues>][])('flags %s', (field, patch) => {
 		expect(Object.keys(validateJob({ ...valid, ...patch }))).toContain(field);
 	});
 

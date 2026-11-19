@@ -1,4 +1,4 @@
-import { isActionFailure, isHttpError, isRedirect } from '@sveltejs/kit';
+import { isActionFailure, isHttpError, isRedirect, type ActionFailure } from '@sveltejs/kit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jobs } from '$lib/server/api/fixtures';
 import { mockApi } from '$lib/server/api/mock';
@@ -29,11 +29,11 @@ function form(title: string, rubricKeys: string[] = job.rubric.map(({ key }) => 
 	return data;
 }
 
-const submit = (data: FormData, jobId = job.id) =>
-	actions.default({
+const submit = async (data: FormData, jobId = job.id) =>
+	(await actions.default({
 		params: { jobId },
 		request: new Request('http://x', { method: 'POST', body: data })
-	} as never);
+	} as never)) as ActionFailure<{ errors: Record<string, string> }>;
 
 describe('edit job', () => {
 	it('locks the rubric when the job has applications', async () => {
@@ -74,6 +74,7 @@ describe('edit job', () => {
 			new ApiError(400, 'validation_failed', 'title is taken', { field: 'title' })
 		);
 		const result = await submit(form('Renamed job'));
-		expect(isActionFailure(result) && result.data.errors).toEqual({ title: 'title is taken' });
+		expect(isActionFailure(result)).toBe(true);
+		expect(result.data.errors).toEqual({ title: 'title is taken' });
 	});
 });

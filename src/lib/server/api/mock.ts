@@ -7,7 +7,8 @@ import {
 	applications,
 	graphRunSnapshot,
 	jobs,
-	publicJobs
+	publicJobs,
+	suggestedRubric
 } from './fixtures';
 import { ApiError, type ApplicationDetail, type SessionInfo, type TalentScoutApi } from './types';
 
@@ -90,6 +91,23 @@ export const mockApi: TalentScoutApi = {
 		if (!job) throw notFound();
 		return job;
 	},
+	// Nothing is stored, so a created job reuses the seeded id: the redirect to its page then works.
+	createJob: async (job) => ({
+		...jobs[0],
+		...job,
+		status: job.status ?? 'open',
+		application_count: 0,
+		updated_at: new Date().toISOString()
+	}),
+	updateJob: async (jobId, patch) => {
+		const job = jobs.find(({ id }) => id === jobId);
+		if (!job) throw notFound();
+		if (patch.rubric && job.application_count > 0) {
+			throw new ApiError(409, 'invalid_state', 'The rubric is locked once a job has applications');
+		}
+		return { ...job, ...patch, updated_at: new Date().toISOString() };
+	},
+	suggestRubric: async () => ({ rubric: suggestedRubric }),
 	getPublicJob: async (jobId) => {
 		const job = publicJobs.find(({ id }) => id === jobId);
 		if (!job) throw notFound();
