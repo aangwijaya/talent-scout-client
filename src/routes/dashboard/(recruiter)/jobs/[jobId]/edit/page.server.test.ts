@@ -52,14 +52,44 @@ describe('edit job', () => {
 
 	it('leaves rubric out of the PATCH body when the job has applications', async () => {
 		const spy = vi.spyOn(mockApi, 'updateJob');
-		// Even a broken rubric in the form is ignored: the lock comes from the API, not the form.
-		const thrown = await submit(form('Renamed job', ['1bad'])).catch((e: unknown) => e);
+		const thrown = await submit(form('Renamed job')).catch((e: unknown) => e);
 		expect(spy).toHaveBeenCalledWith(job.id, {
 			title: 'Renamed job',
 			description: job.description,
 			status: 'closed'
 		});
 		expect(isRedirect(thrown) && thrown.location).toBe(`/dashboard/jobs/${job.id}?saved=updated`);
+	});
+
+	// The page loaded unlocked, then someone applied before the recruiter saved.
+	it.each([
+		['a changed key', (data: FormData) => data.set('rubric[0].key', 'changed_key')],
+		['a changed label', (data: FormData) => data.set('rubric[0].label', 'Changed label')],
+		['a changed description', (data: FormData) => data.set('rubric[0].description', 'Changed')],
+		[
+			'a changed weight',
+			(data: FormData) => data.set('rubric[0].weight', String((job.rubric[0].weight % 3) + 1))
+		],
+		[
+			'a removed criterion',
+			(data: FormData) => {
+				for (const field of ['key', 'label', 'description', 'weight']) {
+					data.delete(`rubric[${job.rubric.length - 1}].${field}`);
+				}
+			}
+		]
+	])('refuses rubric edits that just got locked (%s) without patching', async (_, edit) => {
+		const spy = vi.spyOn(mockApi, 'updateJob');
+		const data = form('Renamed job');
+		edit(data);
+		const result = await submit(data);
+		expect(spy).not.toHaveBeenCalled();
+		expect(isActionFailure(result)).toBe(true);
+		expect(result.status).toBe(409);
+		expect(result.data.errors).toEqual({
+			form: 'Someone applied while you were editing, so the rubric is now locked. Reload to edit the rest.'
+		});
+		expect(result.data).toMatchObject({ values: { title: 'Renamed job' } });
 	});
 
 	it('sends the rubric when the job has no applications', async () => {

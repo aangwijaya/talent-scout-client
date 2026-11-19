@@ -8,6 +8,7 @@
 	import { tick, untrack } from 'svelte';
 	import { applyAction, enhance, type SubmitFunction } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import Markdown from '$lib/markdown/Markdown.svelte';
 	import type { JobStatus, RubricCriterion } from '$lib/server/api/types';
 	import Button from './Button.svelte';
@@ -67,6 +68,8 @@
 			'Review and edit before you save. Suggesting again asks first, then replaces these criteria.',
 		confirmReplace: 'Replace the current criteria with a new suggestion?',
 		unavailable: "The suggestion didn't come through. Try again, or write the criteria yourself.",
+		signedOut: 'Your session ended. Sign in again in a new tab, then try Suggest again.',
+		signIn: 'Sign in (new tab)',
 		label: 'Label',
 		key: 'Key',
 		criterionDescription: 'Description',
@@ -157,12 +160,11 @@
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ title, description })
 			});
-			if (!res.headers.get('content-type')?.includes('application/json')) {
-				// The guard answered with the login page: the session ended.
-				window.location.assign(res.url);
-				return;
-			}
-			const result: SuggestResult = await res.json();
+			// `handle` answers a JSON 401 here instead of redirecting, so the unsaved form stays put.
+			const result: SuggestResult =
+				res.status === 401
+					? { ok: false, status: 401, retry_after_seconds: null }
+					: await res.json();
 			const outcome = applySuggestion(rubric(), result);
 			suggestError = outcome.error;
 			if (result.ok) {
@@ -198,6 +200,10 @@
 			saving = false;
 		};
 	};
+
+	const returnQuery = $derived(
+		new URLSearchParams({ redirectTo: page.url.pathname + page.url.search })
+	);
 
 	const describedBy = (field: string) => (errors[field] ? `${fieldId(field)}-error` : undefined);
 	const inputClass = (field: string, extra = '') => [
@@ -372,6 +378,14 @@
 								>{suggestError.minutes} min</span
 							>,{:else}Try again later,{/if}
 						or write the criteria yourself.
+					{:else if suggestError.kind === 'signed_out'}
+						{COPY.signedOut}
+						<a
+							href="{resolve('/dashboard/login')}?{returnQuery}"
+							target="_blank"
+							rel="noopener"
+							class="font-medium underline underline-offset-2">{COPY.signIn}</a
+						>
 					{:else}
 						{COPY.unavailable}
 					{/if}

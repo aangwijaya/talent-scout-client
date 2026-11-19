@@ -32,6 +32,19 @@ export function isRecruiterRoute({ route, url }: Pick<RequestEvent, 'route' | 'u
 	return path === DASHBOARD_PATH || path.startsWith(`${DASHBOARD_PATH}/`);
 }
 
+const JSON_ENDPOINTS = [
+	'/dashboard/(recruiter)/jobs/rubric-suggestion',
+	'/dashboard/(recruiter)/runs/[runId]/sse-token'
+];
+
+/**
+ * A `+server.ts` endpoint that page scripts call with `fetch`. Without a session it answers a
+ * JSON 401: a login redirect would be followed and leave the script holding an HTML page.
+ */
+export function isJsonEndpoint({ route }: Pick<RequestEvent, 'route'>): boolean {
+	return route.id !== null && JSON_ENDPOINTS.includes(route.id);
+}
+
 /** True for any path under `/dashboard`, the login page included. */
 export function isDashboardRoute({ route, url }: Pick<RequestEvent, 'route' | 'url'>): boolean {
 	return [route.id, url.pathname].some(

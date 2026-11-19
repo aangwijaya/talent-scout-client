@@ -57,6 +57,34 @@ describe('handle', () => {
 	});
 
 	it.each([
+		['/dashboard/(recruiter)/jobs/rubric-suggestion', '/dashboard/jobs/rubric-suggestion'],
+		['/dashboard/(recruiter)/runs/[runId]/sse-token', '/dashboard/runs/1/sse-token']
+	])(
+		'answers a JSON 401, not a login redirect, to POST %s without a session',
+		async (routeId, path) => {
+			const event = fakeEvent({ routeId, path, method: 'POST' });
+			const resolve = vi.fn();
+			const res = await handle({ event, resolve });
+			expect(res.status).toBe(401);
+			expect(res.headers.get('content-type')).toContain('application/json');
+			expect(res.headers.get('location')).toBeNull();
+			expect(res.headers.get('cache-control')).toBe('no-store');
+			expect(await res.json()).toMatchObject({ error: { code: 'unauthorized' } });
+			expect(resolve).not.toHaveBeenCalled();
+		}
+	);
+
+	it('still redirects a page form action without a session', async () => {
+		const event = fakeEvent({
+			routeId: '/dashboard/(recruiter)/jobs/new',
+			path: '/dashboard/jobs/new',
+			method: 'POST'
+		});
+		const res = await handle({ event, resolve: vi.fn() });
+		expect(res.status).toBe(303);
+	});
+
+	it.each([
 		['/dashboard/login', '/dashboard/login'],
 		['/apply/[jobId]', '/apply/1'],
 		['/s/[token]', '/s/abc']

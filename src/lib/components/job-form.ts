@@ -139,7 +139,9 @@ export type SuggestResult =
 	| { ok: false; status: number; retry_after_seconds: number | null };
 
 export type SuggestError =
-	{ kind: 'rate_limited'; minutes: number | null } | { kind: 'unavailable' };
+	| { kind: 'rate_limited'; minutes: number | null }
+	| { kind: 'signed_out' }
+	| { kind: 'unavailable' };
 
 export function retryAfterMinutes(seconds: number | null): number | null {
 	if (seconds === null || !Number.isFinite(seconds)) return null;
@@ -158,5 +160,6 @@ export function applySuggestion(
 			error: { kind: 'rate_limited', minutes: retryAfterMinutes(result.retry_after_seconds) }
 		};
 	}
+	if (result.status === 401) return { rubric: current, error: { kind: 'signed_out' } };
 	return { rubric: current, error: { kind: 'unavailable' } };
 }
