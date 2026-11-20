@@ -101,6 +101,17 @@ describe('mockApi', () => {
 		await expect(mockApi.getGraphRun('missing')).rejects.toMatchObject({ code: 'not_found' });
 	});
 
+	it('demos a "likely" authenticity card with entry lines on the scored answers', async () => {
+		const detail = await mockApi.getApplication(MOCK_APPLICATION_IDS.review);
+		expect(detail.authenticity?.level).toBe('likely');
+		expect(detail.authenticity?.reasons.length).toBeGreaterThan(0);
+		const answers = detail.messages.filter(({ role }) => role === 'applicant');
+		expect(answers.length).toBeGreaterThan(0);
+		expect(answers.every(({ entry }) => entry !== null)).toBe(true);
+		const succeeded = await mockApi.getGraphRun(MOCK_RUN_ID);
+		expect(succeeded.nodes.find(({ id }) => id === 'authenticity')?.status).toBe('succeeded');
+	});
+
 	it('serves a PDF and has no SSE URL', async () => {
 		const cv = await mockApi.getCv(MOCK_APPLICATION_IDS.review);
 		expect(cv.headers.get('Content-Type')).toBe('application/pdf');

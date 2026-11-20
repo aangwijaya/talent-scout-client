@@ -32,9 +32,10 @@ const visuals = (state: RunState) =>
 	Object.fromEntries(Object.values(state.nodes).map((node) => [node.id, node.visual]));
 
 describe('initialRunState', () => {
-	it('starts with the 8 idle nodes of a pre-authenticity replay, untaken edges, and a running run', () => {
+	it('starts with the 9 idle nodes of the server#81 graph, untaken edges, and a running run', () => {
 		const state = initial(MOCK_RUN_ID);
-		expect(Object.keys(state.nodes)).toHaveLength(8);
+		expect(Object.keys(state.nodes)).toHaveLength(9);
+		expect(state.nodes.authenticity.visual).toBe('idle');
 		expect(Object.values(state.nodes).every((node) => node.visual === 'idle')).toBe(true);
 		expect(state.edges.every((edge) => !edge.taken)).toBe(true);
 		expect(state.status).toBe('running');
@@ -154,11 +155,28 @@ describe('§6.1 success with the scorer retry', () => {
 			guard: 'passed',
 			scorer: 'passed',
 			evidence_check: 'passed',
+			authenticity: 'passed',
 			recruiter_gate: 'gate'
 		});
 		expect(state.nodes.scorer.retryBadge).toBe(2);
 		expect(state.status).toBe('succeeded');
-		expect(state.latestEdgeId).toBe('evidence_check>recruiter_gate');
+		expect(state.latestEdgeId).toBe('authenticity>recruiter_gate');
+		expect(state.edges.find((edge) => edge.id === 'evidence_check>authenticity')?.taken).toBe(true);
+	});
+
+	it('still draws a run recorded before server#81 with eight nodes', () => {
+		const snapshot = graphRunSnapshot(MOCK_RUN_ID);
+		if (!snapshot) throw new Error(MOCK_RUN_ID);
+		const legacy = initialRunState({
+			...snapshot,
+			nodes: snapshot.nodes.filter(({ id }) => id !== 'authenticity'),
+			edges: [
+				...snapshot.edges.filter(({ from, to }) => from !== 'authenticity' && to !== 'authenticity'),
+				{ from: 'evidence_check', to: 'recruiter_gate' }
+			]
+		});
+		expect(Object.keys(legacy.nodes)).toHaveLength(8);
+		expect(legacy.edges.some((edge) => edge.id === 'evidence_check>recruiter_gate')).toBe(true);
 	});
 });
 
@@ -168,7 +186,15 @@ describe('§6.2 planner failure', () => {
 	it('fails the run and skips the downstream nodes', () => {
 		expect(state.status).toBe('failed');
 		expect(state.error).toBe('planner_invalid_after_retries');
-		for (const id of ['interviewer', 'judge', 'guard', 'scorer', 'evidence_check'] as const) {
+		const downstream = [
+			'interviewer',
+			'judge',
+			'guard',
+			'scorer',
+			'evidence_check',
+			'authenticity'
+		] as const;
+		for (const id of downstream) {
 			expect(state.nodes[id]).toMatchObject({ visual: 'skipped', skipReason: 'run_failed' });
 		}
 		expect(state.nodes.plan_check.visual).toBe('failed');

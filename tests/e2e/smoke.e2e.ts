@@ -7,6 +7,7 @@ import { DEMO_PORT, REAL_PORT } from './ports';
 const JOB_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
 const INVITED_TOKEN = 'mock-invited';
 const REVIEW_APPLICATION_ID = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+const SUCCEEDED_RUN_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 const PASSWORD = 'mock-password';
 const MAX_ANSWERS = 20;
 
@@ -145,6 +146,15 @@ test('apply, finish the screening chat, then review the application', async ({ p
 		const scoreCard = page.getByRole('article', { name: 'Frontend depth' });
 		await expect(scoreCard).toBeVisible();
 		await expect(page.getByRole('article', { name: 'Communication' })).toBeVisible();
+		await expect(page.getByRole('region', { name: 'Answer authenticity' })).toContainText(
+			'Likely concern'
+		);
+	});
+
+	await test.step('replay the run up to the authenticity node', async () => {
+		await page.goto(`/dashboard/runs/${SUCCEEDED_RUN_ID}`);
+		const node = page.getByRole('button', { name: /^Authenticity\b/ });
+		await expect(node).toHaveAttribute('aria-label', 'Authenticity, worker, Passed');
 	});
 });
 
