@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE_GEOMETRY, type EdgeGeometry } from './graph-layout';
+import { NODE_IDS } from '$lib/stores/graph';
+import {
+	CANVAS_HEIGHT,
+	CANVAS_WIDTH,
+	EDGE_GEOMETRY,
+	NODE_HEIGHT,
+	NODE_NAMES,
+	NODE_POSITIONS,
+	NODE_WIDTH,
+	type EdgeGeometry
+} from './graph-layout';
 
 // The label chip is `text-caption` (12px) with px-2 and a 1px border: 18px line + 2px border tall.
 const CHIP_HEIGHT = 20;
@@ -54,4 +64,55 @@ describe('edge labels', () => {
 			expect(Math.min(...gaps)).toBeLessThanOrEqual(20);
 		});
 	}
+});
+
+// server#81 added the advisory authenticity node between evidence_check and recruiter_gate.
+describe('node layout', () => {
+	it('places all nine nodes, including authenticity, inside the canvas', () => {
+		expect(NODE_IDS).toContain('authenticity');
+		expect(NODE_IDS).toHaveLength(9);
+		for (const id of NODE_IDS) {
+			const pos = NODE_POSITIONS[id];
+			expect(pos, id).toBeDefined();
+			expect(NODE_NAMES[id], id).toBeTruthy();
+			expect(pos.x + NODE_WIDTH, id).toBeLessThanOrEqual(CANVAS_WIDTH);
+			expect(pos.y + NODE_HEIGHT, id).toBeLessThanOrEqual(CANVAS_HEIGHT);
+		}
+	});
+
+	it('never stacks two nodes on each other', () => {
+		const ids = [...NODE_IDS];
+		for (const [i, a] of ids.entries()) {
+			for (const b of ids.slice(i + 1)) {
+				const pa = NODE_POSITIONS[a];
+				const pb = NODE_POSITIONS[b];
+				const apart =
+					pa.x + NODE_WIDTH <= pb.x ||
+					pb.x + NODE_WIDTH <= pa.x ||
+					pa.y + NODE_HEIGHT <= pb.y ||
+					pb.y + NODE_HEIGHT <= pa.y;
+				expect(apart, `${a} overlaps ${b}`).toBe(true);
+			}
+		}
+	});
+
+	it('routes evidence_check → authenticity → recruiter_gate', () => {
+		expect(EDGE_GEOMETRY['evidence_check>authenticity']).toBeDefined();
+		expect(EDGE_GEOMETRY['authenticity>recruiter_gate']).toBeDefined();
+	});
+
+	it('keeps the pre-server#81 evidence_check → recruiter_gate edge clear of the authenticity node', () => {
+		const legacy = EDGE_GEOMETRY['evidence_check>recruiter_gate'];
+		expect(legacy).toBeDefined();
+		const { x, y } = NODE_POSITIONS.authenticity;
+		for (const [px, py] of points(legacy.path)) {
+			const inside = px > x && px < x + NODE_WIDTH && py > y && py < y + NODE_HEIGHT;
+			expect(inside, `${px},${py}`).toBe(false);
+		}
+		const [, , end] = points(legacy.path);
+		expect(end).toEqual([
+			NODE_POSITIONS.recruiter_gate.x + NODE_WIDTH,
+			NODE_POSITIONS.recruiter_gate.y + 32
+		]);
+	});
 });

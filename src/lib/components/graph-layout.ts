@@ -1,5 +1,5 @@
-// Fixed two-row layout of the run graph (DESIGN.md §4): every node is 200×64 at 100% zoom on a
-// 1072×400 canvas. Edge paths are fixed too, so loops never cross or hide behind a node.
+// Fixed three-row layout of the run graph (DESIGN.md §4): every node is 200×64 at 100% zoom on a
+// 1072×592 canvas. Edge paths are fixed too, so loops never cross or hide behind a node.
 import type { RunEvent } from '$lib/events';
 import type { NodeId, NodeType } from '$lib/server/api/types';
 import type { NodeState, NodeVisual } from '$lib/stores/graph';
@@ -7,7 +7,7 @@ import type { NodeState, NodeVisual } from '$lib/stores/graph';
 export const NODE_WIDTH = 200;
 export const NODE_HEIGHT = 64;
 export const CANVAS_WIDTH = 1072;
-export const CANVAS_HEIGHT = 400;
+export const CANVAS_HEIGHT = 592;
 
 export const NODE_POSITIONS: Record<NodeId, { x: number; y: number }> = {
 	planner: { x: 40, y: 96 },
@@ -17,7 +17,8 @@ export const NODE_POSITIONS: Record<NodeId, { x: number; y: number }> = {
 	guard: { x: 832, y: 288 },
 	scorer: { x: 568, y: 288 },
 	evidence_check: { x: 304, y: 288 },
-	recruiter_gate: { x: 40, y: 288 }
+	authenticity: { x: 40, y: 288 },
+	recruiter_gate: { x: 40, y: 480 }
 };
 
 export const NODE_NAMES: Record<NodeId, string> = {
@@ -28,6 +29,7 @@ export const NODE_NAMES: Record<NodeId, string> = {
 	guard: 'Guard',
 	scorer: 'Scorer',
 	evidence_check: 'Evidence check',
+	authenticity: 'Authenticity',
 	recruiter_gate: 'Recruiter gate'
 };
 
@@ -59,6 +61,7 @@ export const shortModel = (model: string) => model.slice(model.lastIndexOf('/') 
 export type EdgeGeometry = { path: string; label: string; labelX: number; labelY: number };
 
 // Top row: y 96–160, thirds at 117/128/139. Bottom row: y 288–352, thirds at 309/320/331.
+// Third row: recruiter_gate alone at y 480–544, under authenticity.
 // Each label sits beside its line so the line and arrowhead stay visible: centred 18px above a
 // horizontal segment, 18px below the two lower-third return lines, and right of the verdict line.
 export const EDGE_GEOMETRY: Record<string, EdgeGeometry> = {
@@ -88,11 +91,25 @@ export const EDGE_GEOMETRY: Record<string, EdgeGeometry> = {
 	'guard>scorer': { path: 'M832,320 L768,320', label: 'finish', labelX: 800, labelY: 302 },
 	'scorer>evidence_check': { path: 'M568,309 L504,309', label: 'scored', labelX: 536, labelY: 291 },
 	'evidence_check>scorer': { path: 'M504,331 L568,331', label: 'retry', labelX: 536, labelY: 349 },
-	'evidence_check>recruiter_gate': {
+	'evidence_check>authenticity': {
 		path: 'M304,320 L240,320',
 		label: 'scored',
 		labelX: 272,
 		labelY: 302
+	},
+	// Runs recorded before server#81 go straight from evidence_check to recruiter_gate; route that
+	// edge under the authenticity node so old replays still draw it.
+	'evidence_check>recruiter_gate': {
+		path: 'M404,352 L404,512 L240,512',
+		label: 'scored',
+		labelX: 322,
+		labelY: 494
+	},
+	'authenticity>recruiter_gate': {
+		path: 'M140,352 L140,480',
+		label: 'scored',
+		labelX: 176,
+		labelY: 416
 	}
 };
 
