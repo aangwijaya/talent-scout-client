@@ -32,7 +32,7 @@ const visuals = (state: RunState) =>
 	Object.fromEntries(Object.values(state.nodes).map((node) => [node.id, node.visual]));
 
 describe('initialRunState', () => {
-	it('starts with 8 idle nodes, untaken edges, and a running run', () => {
+	it('starts with the 8 idle nodes of a pre-authenticity replay, untaken edges, and a running run', () => {
 		const state = initial(MOCK_RUN_ID);
 		expect(Object.keys(state.nodes)).toHaveLength(8);
 		expect(Object.values(state.nodes).every((node) => node.visual === 'idle')).toBe(true);

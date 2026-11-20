@@ -159,7 +159,7 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** Applicant detail with session, transcript, and scores */
+		/** Applicant detail with session, transcript, scores, and authenticity */
 		get: operations['getApplication'];
 		put?: never;
 		post?: never;
@@ -480,6 +480,11 @@ export interface components {
 			/** Format: date-time */
 			created_at: string;
 		};
+		MessageEntry: {
+			pasted_chars: number;
+			typed_chars: number;
+			duration_ms: number;
+		};
 		Message: {
 			/** Format: uuid */
 			id: string;
@@ -492,6 +497,16 @@ export interface components {
 			content: string;
 			/** Format: date-time */
 			created_at: string;
+		};
+		RecruiterMessage: components['schemas']['Message'] & {
+			entry: components['schemas']['MessageEntry'] | null;
+		};
+		Authenticity: {
+			/** @enum {string} */
+			level: 'none' | 'possible' | 'likely';
+			reasons: string[];
+			/** Format: date-time */
+			assessed_at: string;
 		};
 		Topic: {
 			/** Format: uuid */
@@ -558,8 +573,9 @@ export interface components {
 			session: components['schemas']['SessionSummary'] | null;
 			graph_run: components['schemas']['GraphRunSummary'] | null;
 			topics: components['schemas']['Topic'][];
-			messages: components['schemas']['Message'][];
+			messages: components['schemas']['RecruiterMessage'][];
 			scores: components['schemas']['Score'][];
+			authenticity: components['schemas']['Authenticity'] | null;
 		};
 		ApplyResponse: {
 			/** Format: uuid */
@@ -603,6 +619,7 @@ export interface components {
 		};
 		SendMessageRequest: {
 			content: string;
+			entry?: components['schemas']['MessageEntry'];
 		};
 		SendMessageResponse: {
 			message: components['schemas']['Message'];
@@ -637,6 +654,7 @@ export interface components {
 				| 'guard'
 				| 'scorer'
 				| 'evidence_check'
+				| 'authenticity'
 				| 'recruiter_gate';
 			/** @enum {string} */
 			type: 'splitter' | 'worker' | 'gate' | 'code' | 'human_gate';

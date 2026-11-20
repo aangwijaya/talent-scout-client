@@ -222,13 +222,18 @@ function detail(application: ApplicationSummary, parts: DetailParts = {}): Appli
 		topics: [],
 		messages: [],
 		scores: [],
+		authenticity: null,
 		...parts
 	};
 }
 
+/** Recruiter transcript messages carry `entry` (server#81); the mock answers have none. */
+const withEntry = (messages: typeof mockMessages) =>
+	messages.map((message) => ({ ...message, entry: null }));
+
 const finishedRun = (id: string) => ({
 	topics,
-	messages: [...mockMessages],
+	messages: withEntry(mockMessages),
 	session: endedSession('completed'),
 	graph_run: { id, status: 'succeeded' as const, cost_usd: 0.0041 }
 });
@@ -255,7 +260,7 @@ export const applications: ApplicationDetail[] = [
 	}),
 	detail(summary(MOCK_APPLICATION_IDS.inSession, 'Bayu Saputra', 'in_session', 'active', null), {
 		topics: [{ ...topics[0], status: 'active', follow_up_count: 0 }],
-		messages: mockMessages.slice(0, 1),
+		messages: withEntry(mockMessages.slice(0, 1)),
 		session: {
 			id: MOCK_SESSION_ID,
 			status: 'active',
@@ -289,6 +294,7 @@ const nodeTypes: [NodeId, NodeType][] = [
 	['guard', 'code'],
 	['scorer', 'worker'],
 	['evidence_check', 'code'],
+	['authenticity', 'worker'],
 	['recruiter_gate', 'human_gate']
 ];
 
@@ -301,6 +307,8 @@ export function graphRunSnapshot(runId: string): GraphRun | undefined {
 	const attempts = new Map<NodeId, number>();
 	const models = new Map<NodeId, string | null>();
 	let edges: GraphRun['edges'] = [];
+	// A replay recorded before server#81 lists eight nodes; report the nodes its run started with.
+	let types: [NodeId, NodeType][] = nodeTypes;
 	let session_id = MOCK_SESSION_ID;
 	let status: GraphRun['status'] = 'running';
 	let total_tokens_in = 0;
@@ -311,6 +319,7 @@ export function graphRunSnapshot(runId: string): GraphRun | undefined {
 		switch (event.event) {
 			case 'run.started':
 				edges = event.data.edges;
+				types = event.data.nodes.map((node): [NodeId, NodeType] => [node.id, node.type]);
 				session_id = event.data.session_id;
 				break;
 			case 'node.started':
@@ -343,7 +352,7 @@ export function graphRunSnapshot(runId: string): GraphRun | undefined {
 		id: runId,
 		session_id,
 		status,
-		nodes: nodeTypes.map(([id, type]) => ({
+		nodes: types.map(([id, type]) => ({
 			id,
 			type,
 			status: statuses.get(id) ?? 'pending',

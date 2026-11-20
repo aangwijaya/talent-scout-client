@@ -198,7 +198,7 @@ The 16px size token is `text-base`, not `text-body`: `text-body` is the color fr
   - 12-column grid: transcript on the left, 7 columns (scrolls on its own), ScoreCards on the right, 5 columns (sticky), "View graph run" link.
   - Below 1024px, the transcript and scores become tabs.
 - **Live graph** (`/dashboard/runs/[runId]`):
-  - Full-width page (the 1200px content limit doesn't apply). `wash` canvas. Nodes in a fixed two-row layout at 100% zoom: top row left→right planner → plan_check → interviewer ⇄ judge, bottom row right→left guard → scorer ⇄ evidence_check → recruiter_gate. One row would need about 2000px and shrink 14px labels to about 6px.
+  - Full-width page (the 1200px content limit doesn't apply). `wash` canvas. Nine nodes in a fixed three-row layout at 100% zoom (1072×592): top row left→right planner → plan_check → interviewer ⇄ judge, bottom row right→left guard → scorer ⇄ evidence_check → authenticity, and recruiter_gate alone on a third row under authenticity. Runs recorded before the authenticity node draw evidence_check → recruiter_gate under it. One row would need about 2000px and shrink 14px labels to about 6px.
   - 360px right panel: event timeline (mono `seq`, status icon, relative time) + selected node detail (model, attempt, tokens, duration, cost).
   - Toolbar: Live/Replay toggle, total cost, run status.
 - **Apply form** (`/apply/[jobId]`):
