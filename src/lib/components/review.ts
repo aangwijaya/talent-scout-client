@@ -73,12 +73,15 @@ export function speakerLabel(message: Message, applicantName: string): string {
 	return `AI interviewer · ${kindLabels[message.kind]}`;
 }
 
-export type TopicGroup = { topic: Topic | null; messages: Message[] };
+export type TopicGroup<M extends Message = Message> = { topic: Topic | null; messages: M[] };
 
 /** Groups consecutive messages by topic, in transcript order. */
-export function groupByTopic(messages: readonly Message[], topics: readonly Topic[]): TopicGroup[] {
+export function groupByTopic<M extends Message>(
+	messages: readonly M[],
+	topics: readonly Topic[]
+): TopicGroup<M>[] {
 	const byId = new Map(topics.map((topic) => [topic.id, topic]));
-	const groups: (TopicGroup & { id: string | null })[] = [];
+	const groups: (TopicGroup<M> & { id: string | null })[] = [];
 	for (const message of messages) {
 		const last = groups.at(-1);
 		if (last && last.id === message.topic_id) last.messages.push(message);

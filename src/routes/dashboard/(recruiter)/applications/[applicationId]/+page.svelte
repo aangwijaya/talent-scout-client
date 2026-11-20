@@ -10,6 +10,7 @@
 	import { tick } from 'svelte';
 	import { enhance, type SubmitFunction } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import AuthenticityCard from '$lib/components/AuthenticityCard.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import CopyButton from '$lib/components/CopyButton.svelte';
 	import ScoreCard from '$lib/components/ScoreCard.svelte';
@@ -513,6 +514,7 @@
 							</p>
 						{/if}
 					</section>
+					<AuthenticityCard authenticity={detail.authenticity} />
 					{#each detail.job.rubric as criterion (criterion.key)}
 						<ScoreCard {criterion} score={scoreByKey.get(criterion.key)} onjump={jump} />
 					{/each}

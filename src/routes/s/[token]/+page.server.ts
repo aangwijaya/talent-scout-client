@@ -1,10 +1,28 @@
 import { error, fail } from '@sveltejs/kit';
 import { api } from '$lib/server/api';
-import { ApiError } from '$lib/server/api/types';
+import { ENTRY_MAX } from '$lib/components/entry-counter';
+import { ApiError, type MessageEntry } from '$lib/server/api/types';
 import { sessionErrorMessage } from './errors';
 import type { Actions, PageServerLoad } from './$types';
 
 const MAX_ANSWER = 2000;
+
+const isCount = (n: unknown) =>
+	Number.isInteger(n) && (n as number) >= 0 && (n as number) <= ENTRY_MAX;
+
+/** The optional `entry` (FR-15); a malformed one is dropped so the answer still goes through. */
+function parseEntry(raw: FormDataEntryValue | null): MessageEntry | undefined {
+	if (typeof raw !== 'string') return undefined;
+	let value: Partial<Record<keyof MessageEntry, unknown>>;
+	try {
+		value = JSON.parse(raw);
+	} catch {
+		return undefined;
+	}
+	const { pasted_chars, typed_chars, duration_ms } = value ?? {};
+	if (![pasted_chars, typed_chars, duration_ms].every(isCount)) return undefined;
+	return { pasted_chars, typed_chars, duration_ms } as MessageEntry;
+}
 
 function toFailure(err: unknown) {
 	if (err instanceof ApiError) {
@@ -48,12 +66,14 @@ export const actions: Actions = {
 		}
 	},
 	message: async ({ params, request }) => {
-		const content = String((await request.formData()).get('content') ?? '').trim();
+		const form = await request.formData();
+		const content = String(form.get('content') ?? '').trim();
 		if (content.length === 0 || content.length > MAX_ANSWER) {
 			return fail(400, { error: `Your answer must be between 1 and ${MAX_ANSWER} characters.` });
 		}
 		try {
-			const { message } = await api.sendMessage(params.token, content);
+			const entry = parseEntry(form.get('entry'));
+			const { message } = await api.sendMessage(params.token, content, entry);
 			return { message };
 		} catch (err) {
 			return toFailure(err);

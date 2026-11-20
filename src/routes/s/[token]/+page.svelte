@@ -14,7 +14,8 @@
 	import TypingIndicator from '$lib/components/TypingIndicator.svelte';
 	import { keepSessionStream, replayEvents, type SessionEvent } from '$lib/events';
 	import { mockSessionTurns } from '$lib/mock';
-	import type { Message, SessionInfo } from '$lib/server/api/types';
+	import { createEntryCounter } from '$lib/components/entry-counter';
+	import type { Message, MessageEntry, SessionInfo } from '$lib/server/api/types';
 	import {
 		answerHeld,
 		initialChat,
@@ -35,6 +36,7 @@
 			'Wait for each question to finish before you reply. You cannot edit an answer once sent.',
 			'If you refresh or lose your connection, open this link again to continue.'
 		],
+		entryNotice: 'We note whether answers were typed or pasted. A person reviews this.',
 		start: 'Start screening',
 		connecting: 'Connecting…',
 		topic: (position: number, total: number) => `Topic ${position} of ${total}`,
@@ -65,6 +67,8 @@
 	let reconnecting = $state(false);
 	let submitting = $state(false);
 	let resendAttempts = 0;
+	const entry = createEntryCounter();
+	let heldEntry: MessageEntry | null = null;
 	let resendTimer: ReturnType<typeof setTimeout> | undefined;
 	onDestroy(() => clearTimeout(resendTimer));
 	let now = $state(Date.now());
@@ -170,14 +174,19 @@
 		};
 	};
 
-	const messageSubmit: SubmitFunction = ({ cancel }) => {
+	const messageSubmit: SubmitFunction = ({ cancel, formData }) => {
 		if (!canSend(chat.draft, inputLocked || reconnecting)) return cancel();
 		submitting = true;
 		formError = null;
+		// An automatic resend keeps the entry measured at the applicant's own Send.
+		const sent = heldEntry ?? entry.snapshot();
+		heldEntry = null;
+		if (sent) formData.set('entry', JSON.stringify(sent));
 		return async ({ result }) => {
 			submitting = false;
 			if (result.type === 'success' && result.data?.message) {
 				resendAttempts = 0;
+				entry.reset();
 				chat = sendingAnswer(chat, result.data.message as Message);
 				if (mock) replayTurn(chat.messages.filter((m) => m.role === 'applicant').length);
 			} else if (
@@ -187,6 +196,7 @@
 				resendAttempts < RESEND_MS.length
 			) {
 				chat = answerHeld(chat);
+				heldEntry = sent;
 				resendTimer = setTimeout(resendHeld, RESEND_MS[resendAttempts++]);
 			} else if (result.type === 'failure') {
 				resendAttempts = 0;
@@ -285,6 +295,7 @@
 					{#each COPY.rules as rule (rule)}
 						<li>{rule.replace('{minutes}', String(data.session.max_minutes))}</li>
 					{/each}
+					<li class="font-medium text-ink">{COPY.entryNotice}</li>
 				</ul>
 				{#if formError}<InlineError message={formError} />{/if}
 				<form method="POST" action="?/start" use:enhance={startSubmit}>
@@ -353,7 +364,7 @@
 					{#if timeUp}{COPY.timeUp}{/if}
 				</p>
 				<form bind:this={answerForm} method="POST" action="?/message" use:enhance={messageSubmit}>
-					<AnswerBox bind:value={chat.draft} locked={inputLocked} {reconnecting} />
+					<AnswerBox bind:value={chat.draft} locked={inputLocked} {reconnecting} {entry} />
 				</form>
 			</div>
 		</div>

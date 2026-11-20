@@ -1,9 +1,12 @@
 <script lang="ts">
-	import type { Message, Score, Topic } from '$lib/server/api/types';
+	import Clipboard from '@lucide/svelte/icons/clipboard';
+	import Keyboard from '@lucide/svelte/icons/keyboard';
+	import type { RecruiterMessage, Score, Topic } from '$lib/server/api/types';
+	import { entryLine } from './authenticity';
 	import { evidenceByMessage, groupByTopic, highlight, speakerLabel } from './review';
 
 	type Props = {
-		messages: readonly Message[];
+		messages: readonly RecruiterMessage[];
 		topics: readonly Topic[];
 		scores: readonly Score[];
 		applicantName: string;
@@ -73,6 +76,23 @@
 							{message.content}
 						{/if}
 					</p>
+					{#if mine}
+						{@const line = entryLine(message.entry)}
+						{#if line}
+							<p
+								aria-label={line.label}
+								class={[
+									'flex items-center gap-1.5 font-mono text-caption font-medium',
+									line.pasted ? 'text-warning-text' : 'text-helper'
+								]}
+							>
+								{#if line.pasted}<Clipboard size={13} aria-hidden="true" />{:else}<Keyboard
+										size={13}
+										aria-hidden="true"
+									/>{/if}<span aria-hidden="true">{line.text}</span>
+							</p>
+						{/if}
+					{/if}
 				</div>
 			{/each}
 		{/each}
