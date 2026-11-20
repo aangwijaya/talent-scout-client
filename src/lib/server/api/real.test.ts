@@ -52,6 +52,15 @@ describe('realApi', () => {
 		}
 	});
 
+	it('sends the answer entry in the message body only when there is one', async () => {
+		event.fetch.mockImplementation(async () => json(200, {}));
+		const entry = { pasted_chars: 40, typed_chars: 2, duration_ms: 1_200 };
+		await realApi.sendMessage('t', 'hello', entry);
+		await realApi.sendMessage('t', 'hi');
+		const bodies = event.fetch.mock.calls.map(([, init]) => JSON.parse(String(init?.body)));
+		expect(bodies).toEqual([{ content: 'hello', entry }, { content: 'hi' }]);
+	});
+
 	it('creates, edits and suggests with the contract methods and paths', async () => {
 		event.fetch.mockImplementation(async () => json(200, {}));
 		const rubric = [{ key: 'k1', label: 'L1', description: 'description', weight: 1 }];

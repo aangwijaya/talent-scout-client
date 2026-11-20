@@ -90,7 +90,38 @@ describe('actions', () => {
 		const message = { id: 'm2', role: 'applicant', content: 'my answer' };
 		api.sendMessage.mockResolvedValue({ message, awaiting: 'assistant' });
 		await expect(act('message', event(form))).resolves.toEqual({ message });
-		expect(api.sendMessage).toHaveBeenCalledWith(TOKEN, 'my answer');
+		expect(api.sendMessage).toHaveBeenCalledWith(TOKEN, 'my answer', undefined);
+	});
+
+	it('message forwards a valid entry with the answer', async () => {
+		const form = new FormData();
+		form.set('content', 'pasted answer');
+		form.set('entry', JSON.stringify({ pasted_chars: 13, typed_chars: 0, duration_ms: 900 }));
+		api.sendMessage.mockResolvedValue({ message: { id: 'm3' }, awaiting: 'assistant' });
+		await act('message', event(form));
+		expect(api.sendMessage).toHaveBeenCalledWith(TOKEN, 'pasted answer', {
+			pasted_chars: 13,
+			typed_chars: 0,
+			duration_ms: 900
+		});
+	});
+
+	it('message still sends the answer without an entry when the entry is malformed', async () => {
+		const bad = [
+			'not json',
+			JSON.stringify({ pasted_chars: -1, typed_chars: 0, duration_ms: 0 }),
+			JSON.stringify({ pasted_chars: 1.5, typed_chars: 0, duration_ms: 0 }),
+			JSON.stringify({ pasted_chars: 0, typed_chars: 10_000_001, duration_ms: 0 }),
+			JSON.stringify({ pasted_chars: 0, typed_chars: 0 })
+		];
+		api.sendMessage.mockResolvedValue({ message: { id: 'm4' }, awaiting: 'assistant' });
+		for (const entry of bad) {
+			const form = new FormData();
+			form.set('content', 'answer');
+			form.set('entry', entry);
+			await act('message', event(form));
+			expect(api.sendMessage).toHaveBeenLastCalledWith(TOKEN, 'answer', undefined);
+		}
 	});
 
 	it('message rejects empty and over-long content without calling the API', async () => {
