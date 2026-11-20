@@ -171,7 +171,9 @@ describe('§6.1 success with the scorer retry', () => {
 			...snapshot,
 			nodes: snapshot.nodes.filter(({ id }) => id !== 'authenticity'),
 			edges: [
-				...snapshot.edges.filter(({ from, to }) => from !== 'authenticity' && to !== 'authenticity'),
+				...snapshot.edges.filter(
+					({ from, to }) => from !== 'authenticity' && to !== 'authenticity'
+				),
 				{ from: 'evidence_check', to: 'recruiter_gate' }
 			]
 		});

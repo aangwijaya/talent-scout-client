@@ -221,11 +221,12 @@ describe('review page, answer authenticity', () => {
 
 	it('adds one entry line under an answer with an entry and none without', () => {
 		const entry = { pasted_chars: 412, typed_chars: 3, duration_ms: 2_400 };
-		const messages = base.messages.map((m) => (m.id === answer.id ? { ...m, entry } : m));
-		const body = page({ ...base, messages });
+		const bare = { ...base, messages: base.messages.map((m) => ({ ...m, entry: null })) };
+		const messages = bare.messages.map((m) => (m.id === answer.id ? { ...m, entry } : m));
+		const body = page({ ...bare, messages });
 		expect(body.match(/chars · \d+ s/g)).toHaveLength(1);
 		expect(body).toContain('Pasted 412 · typed 3 chars · 2 s');
 		expect(body).toContain('aria-label="412 characters pasted, 3 typed, in 2 seconds"');
-		expect(page(base)).not.toMatch(/chars · \d+ s/);
+		expect(page(bare)).not.toMatch(/chars · \d+ s/);
 	});
 });
