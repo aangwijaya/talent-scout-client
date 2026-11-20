@@ -38,6 +38,10 @@
 					"type": "code"
 				},
 				{
+					"id": "authenticity",
+					"type": "worker"
+				},
+				{
 					"id": "recruiter_gate",
 					"type": "human_gate"
 				}
@@ -81,6 +85,10 @@
 				},
 				{
 					"from": "evidence_check",
+					"to": "authenticity"
+				},
+				{
+					"from": "authenticity",
 					"to": "recruiter_gate"
 				}
 			]
@@ -704,6 +712,46 @@
 		"attempt": null,
 		"data": {
 			"from": "evidence_check",
+			"to": "authenticity",
+			"label": "scored"
+		}
+	},
+	{
+		"event": "node.started",
+		"run_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+		"seq": 47,
+		"ts": "2026-11-04T06:31:42Z",
+		"node_id": "authenticity",
+		"attempt": 1,
+		"data": {
+			"model": "deepseek/deepseek-v4.1-flash",
+			"input_summary": "applicant answers and entry signals"
+		}
+	},
+	{
+		"event": "node.completed",
+		"run_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+		"seq": 48,
+		"ts": "2026-11-04T06:31:44Z",
+		"node_id": "authenticity",
+		"attempt": 1,
+		"data": {
+			"output_summary": "level=likely",
+			"tokens_in": 410,
+			"tokens_out": 38,
+			"duration_ms": 1180,
+			"cost_usd": 3e-5
+		}
+	},
+	{
+		"event": "edge.traversed",
+		"run_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+		"seq": 49,
+		"ts": "2026-11-04T06:31:46Z",
+		"node_id": null,
+		"attempt": null,
+		"data": {
+			"from": "authenticity",
 			"to": "recruiter_gate",
 			"label": "scored"
 		}
@@ -711,16 +759,16 @@
 	{
 		"event": "run.completed",
 		"run_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-		"seq": 47,
-		"ts": "2026-11-04T06:31:42Z",
+		"seq": 50,
+		"ts": "2026-11-04T06:31:48Z",
 		"node_id": null,
 		"attempt": null,
 		"data": {
 			"status": "succeeded",
 			"finish_reason": "completed",
-			"total_tokens_in": 5740,
-			"total_tokens_out": 448,
-			"cost_usd": 0.00042,
+			"total_tokens_in": 6150,
+			"total_tokens_out": 486,
+			"cost_usd": 0.00045,
 			"needs_manual_count": 0
 		}
 	}

@@ -114,6 +114,13 @@ const retry = (attempt: number) => [
 
 const skipped = (...names: string[]) => names.map((name) => `node.skipped(${name})`);
 
+/** server#81: the advisory authenticity node runs between evidence_check and the human gate. */
+const authenticity = [
+	'edge evidence_check>authenticity scored',
+	...node('authenticity'),
+	'edge authenticity>recruiter_gate scored'
+];
+
 describe('run replay data', () => {
 	it.each(Object.entries(mockRunEvents))('%s has valid envelopes and payloads', (runId, events) => {
 		events.forEach((event, index) => {
@@ -124,7 +131,13 @@ describe('run replay data', () => {
 
 	it('uses §4 node.failed codes, and never timeout for a final LLM failure', () => {
 		const codes: readonly string[] = ['timeout', 'llm_unavailable', 'empty_reply', 'llm_error'];
-		const llmNodes: readonly (string | null)[] = ['planner', 'interviewer', 'judge', 'scorer'];
+		const llmNodes: readonly (string | null)[] = [
+			'planner',
+			'interviewer',
+			'judge',
+			'scorer',
+			'authenticity'
+		];
 		const failures = Object.entries(mockRunEvents).flatMap(([runId, events]) =>
 			events.flatMap((e) =>
 				e.event === 'node.failed' ? [{ runId, node: e.node_id, ...e.data }] : []
@@ -147,7 +160,7 @@ describe('run replay data', () => {
 			'edge scorer>evidence_check scored',
 			...node('evidence_check', 2),
 			'check.passed(evidence_check#2)',
-			'edge evidence_check>recruiter_gate scored',
+			...authenticity,
 			'run.completed'
 		]);
 	});
@@ -165,7 +178,7 @@ describe('run replay data', () => {
 			'loop.retry(planner#2)',
 			'edge plan_check>planner invalid',
 			...attempt(2),
-			...skipped('interviewer', 'judge', 'guard', 'scorer', 'evidence_check'),
+			...skipped('interviewer', 'judge', 'guard', 'scorer', 'evidence_check', 'authenticity'),
 			'run.failed'
 		]);
 	});
@@ -190,7 +203,7 @@ describe('run replay data', () => {
 			'node.failed(scorer#1)',
 			'node.started(scorer#2)',
 			'node.failed(scorer#2)',
-			...skipped('evidence_check'),
+			...skipped('evidence_check', 'authenticity'),
 			'run.failed'
 		]);
 		const failures = events.flatMap((e) =>
@@ -204,7 +217,10 @@ describe('run replay data', () => {
 		const skips = events.flatMap((e) =>
 			e.event === 'node.skipped' ? [{ node: e.node_id, ...e.data }] : []
 		);
-		expect(skips).toEqual([{ node: 'evidence_check', reason: 'run_failed' }]);
+		expect(skips).toEqual([
+			{ node: 'evidence_check', reason: 'run_failed' },
+			{ node: 'authenticity', reason: 'run_failed' }
+		]);
 		// failScoring in the server's internal/graph/session.go ends the run with this code.
 		expect(events.at(-1)?.data).toEqual({ error: 'scoring_failed' });
 	});
@@ -219,7 +235,7 @@ describe('run replay data', () => {
 			...scoreInvalid(2),
 			...retry(3),
 			...scoreInvalid(3),
-			'edge evidence_check>recruiter_gate scored',
+			...authenticity,
 			'run.completed'
 		]);
 		expect(events.at(-1)?.data).toMatchObject({ needs_manual_count: 1 });
@@ -311,7 +327,21 @@ describe('run replay data', () => {
 			for (const node of ['planner', 'interviewer'] as const) {
 				expect(edges.filter((e) => e.from === node && e.to === node)).toHaveLength(1);
 			}
-			expect(edges).toHaveLength(12);
+			expect(edges).toHaveLength(13);
+		}
+	});
+
+	it('starts every run with the nine-node graph of server#81 (EVENTS.md Graph shape)', () => {
+		for (const events of Object.values(mockRunEvents)) {
+			const started = events[0];
+			if (started.event !== 'run.started') expect.unreachable('a run starts with run.started');
+			const { nodes, edges } = started.data;
+			expect(nodes).toHaveLength(9);
+			expect(nodes).toContainEqual({ id: 'authenticity', type: 'worker' });
+			const ids = edges.map(({ from, to }) => `${from}>${to}`);
+			expect(ids).toContain('evidence_check>authenticity');
+			expect(ids).toContain('authenticity>recruiter_gate');
+			expect(ids).not.toContain('evidence_check>recruiter_gate');
 		}
 	});
 
@@ -325,7 +355,7 @@ describe('run replay data', () => {
 		for (const [runId, events] of Object.entries(mockRunEvents)) {
 			const snapshot = graphRunSnapshot(runId);
 			expect(snapshot?.last_seq).toBe(events.length);
-			expect(snapshot?.nodes).toHaveLength(8);
+			expect(snapshot?.nodes).toHaveLength(9);
 			expect(snapshot?.nodes.find(({ id }) => id === 'recruiter_gate')?.status).toBe('pending');
 		}
 	});

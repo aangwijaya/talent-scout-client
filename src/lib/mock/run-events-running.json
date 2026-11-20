@@ -38,6 +38,10 @@
 					"type": "code"
 				},
 				{
+					"id": "authenticity",
+					"type": "worker"
+				},
+				{
 					"id": "recruiter_gate",
 					"type": "human_gate"
 				}
@@ -81,6 +85,10 @@
 				},
 				{
 					"from": "evidence_check",
+					"to": "authenticity"
+				},
+				{
+					"from": "authenticity",
 					"to": "recruiter_gate"
 				}
 			]
