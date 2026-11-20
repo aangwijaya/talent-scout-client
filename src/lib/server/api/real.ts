@@ -100,7 +100,8 @@ export const realApi: TalentScoutApi = {
 	getSession: (token) => getJson(`/sessions/${seg(token)}`),
 	startSession: (token) => postJson(`/sessions/${seg(token)}/start`),
 	listMessages: (token) => getJson(`/sessions/${seg(token)}/messages`),
-	sendMessage: (token, content) => postJson(`/sessions/${seg(token)}/messages`, { content }),
+	sendMessage: (token, content, entry) =>
+		postJson(`/sessions/${seg(token)}/messages`, entry ? { content, entry } : { content }),
 	retrySession: (token) => postJson(`/sessions/${seg(token)}/retry`),
 
 	getGraphRun: (runId) => getJson(`/graph-runs/${seg(runId)}`),

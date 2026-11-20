@@ -26,6 +26,9 @@ export type Job = Schemas['Job'];
 export type PublicJob = Schemas['PublicJob'];
 export type ApplicationSummary = Schemas['ApplicationSummary'];
 export type Message = Schemas['Message'];
+export type RecruiterMessage = Schemas['RecruiterMessage'];
+export type MessageEntry = Schemas['MessageEntry'];
+export type Authenticity = Schemas['Authenticity'];
 export type Topic = Schemas['Topic'];
 export type Evidence = Schemas['ScoreEvidence'];
 export type Score = Schemas['Score'];
@@ -124,7 +127,7 @@ export interface TalentScoutApi {
 	getSession(token: string): Promise<SessionInfo>;
 	startSession(token: string): Promise<SessionInfo>;
 	listMessages(token: string): Promise<MessageList>;
-	sendMessage(token: string, content: string): Promise<SendMessageResponse>;
+	sendMessage(token: string, content: string, entry?: MessageEntry): Promise<SendMessageResponse>;
 	retrySession(token: string): Promise<RetryResponse>;
 
 	getGraphRun(runId: string): Promise<GraphRun>;

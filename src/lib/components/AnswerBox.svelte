@@ -2,6 +2,7 @@
 	import AlertCircle from '@lucide/svelte/icons/circle-alert';
 	import SendHorizontal from '@lucide/svelte/icons/send-horizontal';
 	import { answerCounter, autosize, canSend, MAX_ANSWER } from './composer';
+	import type { EntryCounter } from './entry-counter';
 
 	type Props = {
 		value: string;
@@ -9,9 +10,22 @@
 		locked: boolean;
 		/** The stream is reconnecting: the draft stays editable but cannot be sent. */
 		reconnecting: boolean;
+		/** Counts how the answer is entered (FR-15). Paste is never blocked or altered. */
+		entry?: EntryCounter;
 	};
 
-	let { value = $bindable(), locked, reconnecting }: Props = $props();
+	let { value = $bindable(), locked, reconnecting, entry }: Props = $props();
+
+	// Length the field would have after the selection is replaced, read before each input.
+	let keptLength = 0;
+	function onBeforeinput(event: InputEvent & { currentTarget: HTMLTextAreaElement }) {
+		const { value: text, selectionStart, selectionEnd } = event.currentTarget;
+		keptLength = text.length - (selectionEnd - selectionStart);
+	}
+	function onInput(event: Event & { currentTarget: HTMLTextAreaElement }) {
+		if (!(event instanceof InputEvent)) return;
+		entry?.record(event.inputType, event.currentTarget.value.length - keptLength);
+	}
 
 	const COPY = {
 		label: 'Your answer',
@@ -63,6 +77,8 @@
 		aria-describedby={counter ? 'answer-counter' : undefined}
 		bind:value
 		onkeydown={onKeydown}
+		onbeforeinput={onBeforeinput}
+		oninput={onInput}
 		disabled={locked}
 		class="col-start-1 row-start-1 w-full resize-none bg-transparent py-1 text-base text-body outline-hidden placeholder:text-helper disabled:text-helper sm:col-span-2"
 	></textarea>

@@ -189,3 +189,43 @@ describe('review page, other states', () => {
 		expect(body).toMatch(/role="tab"[^>]*>\s*Scores\s*</);
 	});
 });
+
+describe('review page, answer authenticity', () => {
+	const base = fixture('review');
+	const answer = base.messages.find((m) => m.role === 'applicant');
+	if (!answer) throw new Error('fixture has no applicant answer');
+
+	it('puts the card between the overall score and the criteria, first in the Scores tab', () => {
+		const body = page({
+			...base,
+			authenticity: {
+				level: 'likely',
+				reasons: ['Answer 2 was pasted in full.'],
+				assessed_at: '2026-11-05T14:12:00Z'
+			}
+		});
+		const scores = body.slice(body.indexOf('id="panel-scores"'));
+		const overall = scores.indexOf('Overall score');
+		const card = scores.indexOf('Answer authenticity');
+		const criterion = scores.indexOf(base.job.rubric[0].label);
+		expect(overall).toBeGreaterThan(-1);
+		expect(card).toBeGreaterThan(overall);
+		expect(criterion).toBeGreaterThan(card);
+		expect(body).toContain('Likely concern');
+		expect(scores).toMatch(/<div class="max-lg:order-first">\s*<section[^>]*authenticity-heading/);
+	});
+
+	it('shows "Not assessed" when the check did not run', () => {
+		expect(page({ ...base, authenticity: null })).toContain('Not assessed');
+	});
+
+	it('adds one entry line under an answer with an entry and none without', () => {
+		const entry = { pasted_chars: 412, typed_chars: 3, duration_ms: 2_400 };
+		const messages = base.messages.map((m) => (m.id === answer.id ? { ...m, entry } : m));
+		const body = page({ ...base, messages });
+		expect(body.match(/chars · \d+ s/g)).toHaveLength(1);
+		expect(body).toContain('Pasted 412 · typed 3 chars · 2 s');
+		expect(body).toContain('aria-label="412 characters pasted, 3 typed, in 2 seconds"');
+		expect(page(base)).not.toMatch(/chars · \d+ s/);
+	});
+});
