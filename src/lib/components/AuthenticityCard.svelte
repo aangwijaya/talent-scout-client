@@ -52,6 +52,6 @@
 		</ul>
 	{/if}
 	<p class="text-caption text-helper">
-		{AUTHENTICITY_ADVISORY}{#if view.checked}{' '}{view.checked}{/if}
+		{view.checked ? `${AUTHENTICITY_ADVISORY} ${view.checked}` : AUTHENTICITY_ADVISORY}
 	</p>
 </section>
