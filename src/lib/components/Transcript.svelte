@@ -80,6 +80,7 @@
 						{@const line = entryLine(message.entry)}
 						{#if line}
 							<p
+								role="note"
 								aria-label={line.label}
 								class={[
 									'flex items-center gap-1.5 font-mono text-caption font-medium',

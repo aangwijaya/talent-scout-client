@@ -121,11 +121,271 @@ function json(
 	res.end(JSON.stringify(body));
 }
 
+// Answer authenticity (server#81) for `authenticity.e2e.ts`: one active session that records
+// the `entry` of each answer, and two reviewed applications. Ids are repeated in that file.
+const ENTRY_SESSION = 'e2e-entry-session-token';
+const ASSESSED_APP = 'e2e00000-0000-4000-8000-0000000000a1';
+const UNASSESSED_APP = 'e2e00000-0000-4000-8000-0000000000a2';
+const TOPIC_ID = 'e2e00000-0000-4000-8000-0000000000b1';
+const received: unknown[] = [];
+
+const question = {
+	id: 'e2e00000-0000-4000-8000-0000000000c1',
+	role: 'assistant',
+	kind: 'question',
+	topic_id: TOPIC_ID,
+	content: 'Tell me about a feature you shipped end to end.',
+	created_at: '2026-11-05T14:00:00Z'
+};
+
+const INVITED_SESSION = 'e2e-entry-invited-token';
+
+function entrySession(active: boolean) {
+	const started = Date.now() - 60_000;
+	return {
+		status: active ? 'active' : 'invited',
+		job_title: 'Seeded Engineer',
+		applicant_name: 'Paste Tester',
+		expires_at: new Date(started + 86_400_000).toISOString(),
+		started_at: active ? new Date(started).toISOString() : null,
+		deadline_at: active ? new Date(started + 15 * 60_000).toISOString() : null,
+		max_minutes: 15,
+		topic_count: active ? 2 : null,
+		question_count: active ? 1 : 0,
+		max_questions: 6,
+		current_topic: active ? { position: 1, total: 2, title: 'Shipping' } : null
+	};
+}
+
+function reviewedApplication(id: string, assessed: boolean) {
+	const answer = (n: number, content: string, entry: unknown) => ({
+		id: `e2e00000-0000-4000-8000-0000000000d${n}`,
+		role: 'applicant',
+		kind: 'answer',
+		topic_id: TOPIC_ID,
+		content,
+		created_at: `2026-11-05T14:0${n}:00Z`,
+		entry
+	});
+	return {
+		application: {
+			id,
+			job_id: SEED_JOB_ID,
+			name: assessed ? 'Pat Paster' : 'Una Assessed',
+			email: 'applicant@example.com',
+			status: 'review',
+			session_status: 'completed',
+			overall_score: 3.5,
+			created_at: '2026-11-05T13:00:00Z'
+		},
+		job: { id: SEED_JOB_ID, title: 'Seeded Engineer', rubric: SUGGESTION },
+		cv_text: '',
+		decision: null,
+		session: null,
+		graph_run: null,
+		topics: [
+			{
+				id: TOPIC_ID,
+				position: 1,
+				title: 'Shipping',
+				goal: 'Ships end to end',
+				rubric_keys: ['product_sense'],
+				status: 'done',
+				follow_up_count: 0
+			}
+		],
+		messages: [
+			{ ...question, entry: null },
+			answer(1, 'I rebuilt the checkout flow and measured the drop-off.', {
+				pasted_chars: 412,
+				typed_chars: 3,
+				duration_ms: 2_400
+			}),
+			answer(2, 'I paired with design on every step.', {
+				pasted_chars: 0,
+				typed_chars: 186,
+				duration_ms: 41_600
+			}),
+			answer(3, 'Sent before entry signals existed.', null)
+		],
+		scores: SUGGESTION.map(({ key }) => ({
+			rubric_key: key,
+			score: 3.5,
+			rationale: 'Solid answer.',
+			status: 'valid',
+			attempts: 1,
+			evidence: []
+		})),
+		authenticity: assessed
+			? {
+					level: 'likely',
+					reasons: ['Answer 1 was pasted in full within three seconds.'],
+					assessed_at: '2026-11-05T14:12:00Z'
+				}
+			: null
+	};
+}
+
+// A recorded nine-node run whose replay ends with `authenticity` before the recruiter gate.
+const NINE_NODE_RUN = 'e2e00000-0000-4000-8000-0000000000e1';
+const NINE_NODES = [
+	['planner', 'splitter'],
+	['plan_check', 'code'],
+	['interviewer', 'worker'],
+	['judge', 'gate'],
+	['guard', 'code'],
+	['scorer', 'worker'],
+	['evidence_check', 'code'],
+	['authenticity', 'worker'],
+	['recruiter_gate', 'human_gate']
+] as const;
+const NINE_EDGES = [
+	['planner', 'plan_check'],
+	['plan_check', 'interviewer'],
+	['interviewer', 'judge'],
+	['judge', 'guard'],
+	['guard', 'scorer'],
+	['scorer', 'evidence_check'],
+	['evidence_check', 'authenticity'],
+	['authenticity', 'recruiter_gate']
+].map(([from, to]) => ({ from, to }));
+
+function nineNodeRun() {
+	return {
+		id: NINE_NODE_RUN,
+		session_id: 'e2e00000-0000-4000-8000-0000000000e2',
+		// Only the replay can turn `authenticity` green.
+		status: 'running',
+		nodes: NINE_NODES.map(([id, type]) => ({
+			id,
+			type,
+			status: id === 'authenticity' || id === 'recruiter_gate' ? 'pending' : 'succeeded',
+			attempts: 1,
+			model: null
+		})),
+		edges: NINE_EDGES,
+		last_seq: 4,
+		total_tokens_in: 900,
+		total_tokens_out: 120,
+		cost_usd: 0.0004
+	};
+}
+
+function nineNodeEvents() {
+	const envelope = (seq: number, event: string, node_id: string | null, data: object) => ({
+		event,
+		run_id: NINE_NODE_RUN,
+		seq,
+		ts: `2026-11-05T14:12:0${seq}Z`,
+		node_id,
+		attempt: node_id ? 1 : null,
+		data
+	});
+	return [
+		envelope(1, 'run.started', null, {
+			session_id: 'e2e00000-0000-4000-8000-0000000000e2',
+			nodes: NINE_NODES.map(([id, type]) => ({ id, type })),
+			edges: NINE_EDGES
+		}),
+		envelope(2, 'node.started', 'authenticity', {
+			model: 'claude-haiku-5-5',
+			input_summary: '3 answers with entry signals'
+		}),
+		envelope(3, 'node.completed', 'authenticity', {
+			output_summary: 'level likely',
+			tokens_in: 900,
+			tokens_out: 120,
+			duration_ms: 1_400,
+			cost_usd: 0.0004
+		}),
+		envelope(4, 'run.completed', null, {
+			status: 'succeeded',
+			finish_reason: 'completed',
+			total_tokens_in: 900,
+			total_tokens_out: 120,
+			cost_usd: 0.0004,
+			needs_manual_count: 0
+		})
+	];
+}
+
+type Handler = (
+	req: import('node:http').IncomingMessage,
+	res: import('node:http').ServerResponse
+) => unknown;
+
+function authenticityRoute(method: string, path: string): Handler | null {
+	const session = `/api/v1/sessions/${ENTRY_SESSION}`;
+	if (path === '/__entries') return (_, res) => json(res, 200, { received });
+	if (method === 'GET' && path === session) return (_, res) => json(res, 200, entrySession(true));
+	if (method === 'GET' && path === `${session}/messages`) {
+		return (_, res) => json(res, 200, { items: [question] });
+	}
+	const invited = `/api/v1/sessions/${INVITED_SESSION}`;
+	if (method === 'GET' && path === invited) return (_, res) => json(res, 200, entrySession(false));
+	if (method === 'GET' && path === `${invited}/messages`) {
+		return (_, res) => json(res, 200, { items: [] });
+	}
+	if (method === 'POST' && path === `${session}/messages`) {
+		return async (req, res) => {
+			const body = await readJson(req);
+			received.push(body.entry ?? null);
+			const message = {
+				id: crypto.randomUUID(),
+				role: 'applicant',
+				kind: 'answer',
+				topic_id: TOPIC_ID,
+				content: body.content,
+				created_at: new Date().toISOString()
+			};
+			return json(res, 202, { message, awaiting: 'assistant' });
+		};
+	}
+	// The browser opens this stream itself (cross-origin); it stays open and quiet.
+	if (method === 'GET' && (path === `${session}/events` || path === `${invited}/events`)) {
+		return (_, res) => {
+			res.writeHead(200, {
+				'content-type': 'text/event-stream',
+				'cache-control': 'no-cache',
+				'access-control-allow-origin': '*'
+			});
+			res.write(': connected\n\n');
+		};
+	}
+	if (method === 'GET' && path === `/api/v1/graph-runs/${NINE_NODE_RUN}`) {
+		return (_, res) => json(res, 200, nineNodeRun());
+	}
+	if (method === 'POST' && path === '/api/v1/auth/sse-token') {
+		const expires_at = new Date(Date.now() + 60_000).toISOString();
+		return (_, res) => json(res, 200, { sse_token: 'e2e-sse-token', expires_at });
+	}
+	if (method === 'GET' && path === `/api/v1/graph-runs/${NINE_NODE_RUN}/events`) {
+		return (_, res) => {
+			res.writeHead(200, {
+				'content-type': 'text/event-stream',
+				'cache-control': 'no-cache',
+				'access-control-allow-origin': '*'
+			});
+			for (const event of nineNodeEvents()) {
+				const { event: name, ...envelope } = event;
+				res.write(`event: ${name}\nid: ${event.seq}\ndata: ${JSON.stringify(envelope)}\n\n`);
+			}
+			res.end();
+		};
+	}
+	const app = path.match(/^\/api\/v1\/applications\/([^/]+)$/)?.[1];
+	if (method === 'GET' && (app === ASSESSED_APP || app === UNASSESSED_APP)) {
+		return (_, res) => json(res, 200, reviewedApplication(app, app === ASSESSED_APP));
+	}
+	return null;
+}
+
 createServer(async (req, res) => {
 	const path = new URL(req.url ?? '/', 'http://localhost').pathname;
 	if (path === '/__seen') return json(res, 200, { token: FAKE_ACCESS_TOKEN, requests: seen });
 	if (path === '/__reset') {
 		seen.length = 0;
+		received.length = 0;
 		return json(res, 200, {});
 	}
 	if (path === '/__jobs') {
@@ -141,6 +401,9 @@ createServer(async (req, res) => {
 		}
 		return json(res, 200, { id: jd[1], ...JD_JOBS[jd[1]], status: 'open' });
 	}
+
+	const authenticity = authenticityRoute(req.method ?? 'GET', path);
+	if (authenticity) return authenticity(req, res);
 
 	seen.push({ method: req.method ?? 'GET', path, headers: req.headers });
 	if (req.method === 'POST' && path === '/api/v1/auth/login') {

@@ -212,6 +212,7 @@ describe('review page, answer authenticity', () => {
 		expect(card).toBeGreaterThan(overall);
 		expect(criterion).toBeGreaterThan(card);
 		expect(body).toContain('Likely concern');
+		expect(scores).toMatch(/<div class="max-lg:order-first">\s*<section[^>]*authenticity-heading/);
 	});
 
 	it('shows "Not assessed" when the check did not run', () => {

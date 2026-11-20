@@ -514,7 +514,10 @@
 							</p>
 						{/if}
 					</section>
-					<AuthenticityCard authenticity={detail.authenticity} />
+					<!-- In the tabs layout the card leads the Scores tab. -->
+					<div class="max-lg:order-first">
+						<AuthenticityCard authenticity={detail.authenticity} />
+					</div>
 					{#each detail.job.rubric as criterion (criterion.key)}
 						<ScoreCard {criterion} score={scoreByKey.get(criterion.key)} onjump={jump} />
 					{/each}
