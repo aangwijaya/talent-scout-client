@@ -38,6 +38,10 @@
 					"type": "code"
 				},
 				{
+					"id": "authenticity",
+					"type": "worker"
+				},
+				{
 					"id": "recruiter_gate",
 					"type": "human_gate"
 				}
@@ -81,6 +85,10 @@
 				},
 				{
 					"from": "evidence_check",
+					"to": "authenticity"
+				},
+				{
+					"from": "authenticity",
 					"to": "recruiter_gate"
 				}
 			]
@@ -588,10 +596,21 @@
 		}
 	},
 	{
-		"event": "run.failed",
+		"event": "node.skipped",
 		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
 		"seq": 39,
 		"ts": "2026-11-04T06:31:26Z",
+		"node_id": "authenticity",
+		"attempt": null,
+		"data": {
+			"reason": "run_failed"
+		}
+	},
+	{
+		"event": "run.failed",
+		"run_id": "8e2a4c6d-3f5b-4a7c-b190-6d8f0a2c4e50",
+		"seq": 40,
+		"ts": "2026-11-04T06:31:28Z",
 		"node_id": null,
 		"attempt": null,
 		"data": {

@@ -12,8 +12,10 @@ import type {
 	ApplicationDetail,
 	ApplicationStatus,
 	ApplicationSummary,
+	Authenticity,
 	GraphRun,
 	Job,
+	MessageEntry,
 	NodeId,
 	NodeStatus,
 	NodeType,
@@ -227,24 +229,49 @@ function detail(application: ApplicationSummary, parts: DetailParts = {}): Appli
 	};
 }
 
-/** Recruiter transcript messages carry `entry` (server#81); the mock answers have none. */
-const withEntry = (messages: typeof mockMessages) =>
-	messages.map((message) => ({ ...message, entry: null }));
+/**
+ * Entry signals (server#81) per applicant answer: the first answer was pasted in full, the second
+ * typed. Assistant messages carry none.
+ */
+const ENTRIES: Record<string, MessageEntry> = {
+	[firstAnswer.id]: { pasted_chars: 84, typed_chars: 0, duration_ms: 2_600 },
+	[secondAnswer.id]: { pasted_chars: 0, typed_chars: 96, duration_ms: 31_000 }
+};
 
-const finishedRun = (id: string) => ({
+const withEntry = (messages: typeof mockMessages) =>
+	messages.map((message) => ({ ...message, entry: ENTRIES[message.id] ?? null }));
+
+/** What the authenticity node of the matching replay reports (`level=` in its output_summary). */
+const likelyAuthenticity: Authenticity = {
+	level: 'likely',
+	reasons: [
+		'Answer 1 was pasted in full within three seconds.',
+		'Answer 1 reads like a prepared summary rather than a reply to the question.'
+	],
+	assessed_at: '2026-11-04T06:31:44Z'
+};
+
+const possibleAuthenticity: Authenticity = {
+	level: 'possible',
+	reasons: ['Answer 1 was pasted in full within three seconds.'],
+	assessed_at: '2026-11-04T06:32:00Z'
+};
+
+const finishedRun = (id: string, authenticity: Authenticity) => ({
 	topics,
 	messages: withEntry(mockMessages),
 	session: endedSession('completed'),
-	graph_run: { id, status: 'succeeded' as const, cost_usd: 0.0041 }
+	graph_run: { id, status: 'succeeded' as const, cost_usd: 0.0041 },
+	authenticity
 });
 
 export const applications: ApplicationDetail[] = [
 	detail(summary(MOCK_APPLICATION_IDS.review, 'Rani Putri', 'review', 'completed', 3.4), {
-		...finishedRun(MOCK_RUN_ID),
+		...finishedRun(MOCK_RUN_ID, likelyAuthenticity),
 		scores: [...validScores, systemDesignValid]
 	}),
 	detail(summary(MOCK_APPLICATION_IDS.needsManual, 'Dimas Pratama', 'review', 'completed', 3.67), {
-		...finishedRun(MOCK_NEEDS_MANUAL_RUN_ID),
+		...finishedRun(MOCK_NEEDS_MANUAL_RUN_ID, possibleAuthenticity),
 		scores: [...validScores, systemDesignManual]
 	}),
 	detail(summary(MOCK_APPLICATION_IDS.invited, 'Sari Wulandari', 'invited', 'invited', null), {
@@ -275,7 +302,7 @@ export const applications: ApplicationDetail[] = [
 	detail(
 		summary(MOCK_APPLICATION_IDS.shortlisted, 'Maya Lestari', 'shortlisted', 'completed', 3.4),
 		{
-			...finishedRun(MOCK_RUN_ID),
+			...finishedRun(MOCK_RUN_ID, likelyAuthenticity),
 			scores: [...validScores, systemDesignValid],
 			decision: { value: 'shortlist', note: 'Strong on state management.', decided_at: LATER }
 		}
@@ -307,7 +334,7 @@ export function graphRunSnapshot(runId: string): GraphRun | undefined {
 	const attempts = new Map<NodeId, number>();
 	const models = new Map<NodeId, string | null>();
 	let edges: GraphRun['edges'] = [];
-	// A replay recorded before server#81 lists eight nodes; report the nodes its run started with.
+	// Report the nodes the run started with, so a run recorded before server#81 keeps eight.
 	let types: [NodeId, NodeType][] = nodeTypes;
 	let session_id = MOCK_SESSION_ID;
 	let status: GraphRun['status'] = 'running';
