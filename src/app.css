@@ -56,4 +56,22 @@
 	body {
 		@apply bg-canvas text-body-sm text-body;
 	}
+
+	/* No grey tap flash or double-tap zoom delay on touch screens; body text stays selectable. */
+	a,
+	button,
+	summary,
+	[role='tab'] {
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
+	}
+
+	button,
+	[role='tab'] {
+		user-select: none;
+	}
 }
+
+/* `touch:` = a finger is the pointer: 44px targets at any width, while a mouse keeps the
+   compact desktop sizes (32–36px). */
+@custom-variant touch (@media (pointer: coarse));
