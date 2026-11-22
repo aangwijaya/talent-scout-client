@@ -4,20 +4,15 @@
 	import { navigating, page } from '$app/state';
 	import type { Snippet } from 'svelte';
 	import Logo from '$lib/components/Logo.svelte';
-	import TableSkeleton from '$lib/components/TableSkeleton.svelte';
+	import RouteSkeleton from './RouteSkeleton.svelte';
+	import { skeletonFor } from './skeleton';
 
 	let { children }: { children: Snippet } = $props();
 
-	const JOBS_ROUTES = ['/dashboard/(recruiter)/jobs', '/dashboard/(recruiter)/jobs/[jobId]'];
-
 	const jobsActive = $derived(page.url.pathname.startsWith('/dashboard/jobs'));
-	// Moving to another table page: show its skeleton until the load returns. A filter change on
-	// the same page is handled by the page itself, which keeps its header.
-	const loadingTable = $derived(
-		navigating.to?.route.id != null &&
-			navigating.to.route.id !== page.route.id &&
-			JOBS_ROUTES.includes(navigating.to.route.id)
-	);
+	// Moving to another dashboard page: show a skeleton in its shape until the load returns. A
+	// filter change on the same page is handled by the page itself, which keeps its header.
+	const skeleton = $derived(skeletonFor(navigating.to?.route.id, page.route.id));
 
 	// The graph run page spans the whole window; every other page, and the run's own error page
 	// (404 or a failed load), keeps the padded 1200px column.
@@ -68,13 +63,8 @@
 		</nav>
 	</header>
 	<main class={fullWidth ? '' : 'mx-auto max-w-[1200px] p-4 sm:p-6'}>
-		{#if loadingTable}
-			<div class="mb-6 flex flex-col gap-2" aria-hidden="true">
-				<span class="block h-7 w-48 rounded-full bg-subtle motion-safe:animate-pulse"></span>
-				<span class="block h-4 w-72 max-w-full rounded-full bg-subtle motion-safe:animate-pulse"
-				></span>
-			</div>
-			<TableSkeleton label="Loading" />
+		{#if skeleton}
+			<RouteSkeleton kind={skeleton} />
 		{:else}
 			{@render children()}
 		{/if}

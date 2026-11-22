@@ -33,11 +33,11 @@
 			<p class="text-caption text-helper">{meta}</p>
 		</div>
 		{#if value === null}
-			<span role="img" class="font-mono text-2xl text-helper" aria-label="No score">—</span>
+			<span role="img" class="font-mono text-subheading text-helper" aria-label="No score">—</span>
 		{:else}
 			<span
 				role="img"
-				class="font-mono text-2xl whitespace-nowrap text-ink"
+				class="font-mono text-subheading whitespace-nowrap text-ink"
 				aria-label="{value} out of 5"
 			>
 				{value}/5

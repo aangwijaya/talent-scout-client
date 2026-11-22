@@ -98,7 +98,11 @@
 <nav aria-label="Breadcrumb" class="text-body-sm">
 	<ol class="flex flex-wrap items-center gap-1">
 		<li>
-			<a href={resolve('/dashboard/(recruiter)/jobs')} class="text-muted hover:text-ink">Jobs</a>
+			<a
+				href={resolve('/dashboard/(recruiter)/jobs')}
+				class="rounded-sm text-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden"
+				>Jobs</a
+			>
 		</li>
 		<li aria-hidden="true" class="text-helper"><ChevronRight size={14} /></li>
 		<li aria-current="page" class="[overflow-wrap:anywhere] text-ink">{data.job.title}</li>
@@ -145,14 +149,14 @@
 	>
 		<div class="flex items-baseline justify-between gap-3">
 			<h2 id="rubric-title" class="text-base font-semibold text-ink">{COPY.rubric}</h2>
-			<span class="text-caption text-helper">{COPY.weight}</span>
+			<span class="text-caption text-muted">{COPY.weight}</span>
 		</div>
 		<ul class="mt-3">
 			{#each data.job.rubric as criterion (criterion.key)}
 				<li class="flex items-start justify-between gap-3 border-t border-line py-3 last:pb-0">
 					<div class="min-w-0">
 						<p class="text-body-sm font-medium text-body">{criterion.label}</p>
-						<p class="mt-0.5 text-[13px] text-helper">{criterion.description}</p>
+						<p class="mt-0.5 text-caption text-muted">{criterion.description}</p>
 					</div>
 					<span
 						class={[
@@ -171,11 +175,7 @@
 
 <!-- A GET form: each pill submits its status, and "All" submits none. -->
 <form method="GET" class="mb-4">
-	<div
-		role="group"
-		aria-label={COPY.filterLabel}
-		class="-mx-1 flex gap-2 overflow-x-auto p-1 sm:flex-wrap"
-	>
+	<div role="group" aria-label={COPY.filterLabel} class="-mx-1 flex gap-2 overflow-x-auto p-1">
 		{#each filters as filter (filter.label)}
 			{@const active = filter.status === data.status}
 			<button
@@ -183,7 +183,7 @@
 				value={filter.status ?? undefined}
 				aria-pressed={active}
 				class={[
-					'h-9 shrink-0 cursor-pointer rounded-full border px-3 text-body-sm font-medium whitespace-nowrap focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden sm:h-8',
+					'h-9 shrink-0 cursor-pointer rounded-full border px-3 text-body-sm font-medium whitespace-nowrap focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden sm:h-8 touch:h-11',
 					active
 						? 'border-brand bg-wash text-brand'
 						: 'border-line bg-card text-muted hover:bg-subtle'
@@ -198,7 +198,7 @@
 {#if loading}
 	<TableSkeleton label={COPY.loading} />
 {:else}
-	<div class="overflow-x-auto rounded-panel border border-line bg-card max-sm:hidden">
+	<div class="overflow-x-auto rounded-panel border border-line bg-card max-lg:hidden">
 		<table class="w-full text-left text-body-sm">
 			<thead class="bg-subtle text-caption text-muted uppercase">
 				<tr>
@@ -219,7 +219,7 @@
 							>
 								{application.name}
 							</a>
-							<span class="block text-caption [overflow-wrap:anywhere] text-helper"
+							<span class="block text-caption [overflow-wrap:anywhere] text-muted"
 								>{application.email}</span
 							>
 						</td>
@@ -241,8 +241,8 @@
 		</table>
 	</div>
 
-	<!-- Below 640px the table becomes a list: each row is one link with a 44px touch target. -->
-	<ul class="overflow-hidden rounded-panel border border-line bg-card sm:hidden">
+	<!-- Below 1024px the table becomes a list: each row is one link with a 44px touch target. -->
+	<ul class="overflow-hidden rounded-panel border border-line bg-card lg:hidden">
 		{#each data.applications as application (application.id)}
 			<li class="border-line not-first:border-t">
 				<a
@@ -251,8 +251,7 @@
 				>
 					<span class="flex min-w-0 flex-col gap-1">
 						<span class="font-medium [overflow-wrap:anywhere] text-ink">{application.name}</span>
-						<span class="text-caption [overflow-wrap:anywhere] text-helper"
-							>{application.email}</span
+						<span class="text-caption [overflow-wrap:anywhere] text-muted">{application.email}</span
 						>
 						<StatusBadge status={application.status} />
 					</span>
