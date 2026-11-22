@@ -94,6 +94,23 @@ function judgeOutage(): RunEvent[] {
 	);
 	const followUp = find('edge.traversed', (e) => e.data.from === 'guard');
 	const topic = at('topic.changed', find('topic.changed'));
+	// The failed judge never completes, so its usage leaves the run totals.
+	const judgeDone = at(
+		'node.completed',
+		find('node.completed', (e) => e.node_id === 'judge')
+	).data;
+	const withoutJudge = (event: RunEvent): RunEvent =>
+		event.event !== 'run.completed'
+			? event
+			: {
+					...event,
+					data: {
+						...event.data,
+						total_tokens_in: event.data.total_tokens_in - judgeDone.tokens_in,
+						total_tokens_out: event.data.total_tokens_out - judgeDone.tokens_out,
+						cost_usd: Number((event.data.cost_usd - judgeDone.cost_usd).toFixed(6))
+					}
+				};
 	return renumber(MOCK_JUDGE_OUTAGE_RUN_ID, [
 		...successRun.slice(0, judgeIndex),
 		judge,
@@ -117,7 +134,7 @@ function judgeOutage(): RunEvent[] {
 			...at('edge.traversed', followUp),
 			data: { from: 'guard', to: 'interviewer', label: 'next_topic' }
 		},
-		...successRun.slice(followUp + 1)
+		...successRun.slice(followUp + 1).map(withoutJudge)
 	]);
 }
 

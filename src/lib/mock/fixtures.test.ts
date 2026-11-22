@@ -351,6 +351,38 @@ describe('run replay data', () => {
 		}
 	});
 
+	it('reports run.completed totals that equal the sums over node.completed', () => {
+		const completed = Object.entries(mockRunEvents).flatMap(([runId, events]) => {
+			const last = events.at(-1);
+			return last?.event === 'run.completed' ? [{ runId, events, totals: last.data }] : [];
+		});
+		expect(completed.length).toBeGreaterThan(0);
+		const mismatches = completed.flatMap(({ runId, events, totals }) => {
+			const nodes = events.flatMap((e) => (e.event === 'node.completed' ? [e.data] : []));
+			const sum = (key: 'tokens_in' | 'tokens_out' | 'cost_usd') =>
+				nodes.reduce((total, data) => total + data[key], 0);
+			const reported = [totals.total_tokens_in, totals.total_tokens_out, totals.cost_usd];
+			const summed = [sum('tokens_in'), sum('tokens_out'), Number(sum('cost_usd').toFixed(6))];
+			return reported.every((value, i) => value === summed[i]) ? [] : [{ runId, reported, summed }];
+		});
+		expect(mismatches).toEqual([]);
+	});
+
+	it('reports the authenticity level of the application each replay belongs to', () => {
+		const pairs = applications.flatMap(({ application, graph_run, authenticity }) => {
+			if (!graph_run || !authenticity) return [];
+			const summary = mockRunEvents[graph_run.id]?.find(
+				(e) => e.event === 'node.completed' && e.node_id === 'authenticity'
+			);
+			return [{ id: application.id, summary, level: authenticity.level }];
+		});
+		expect(pairs.length).toBeGreaterThan(0);
+		for (const { id, summary, level } of pairs) {
+			if (summary?.event !== 'node.completed') expect.unreachable(`${id}: no authenticity node`);
+			expect(summary.data.output_summary, id).toBe(`level=${level}`);
+		}
+	});
+
 	it('snapshots agree with the replay they summarize', () => {
 		for (const [runId, events] of Object.entries(mockRunEvents)) {
 			const snapshot = graphRunSnapshot(runId);

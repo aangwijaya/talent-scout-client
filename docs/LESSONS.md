@@ -23,6 +23,14 @@ Rules:
 
 ## Entries
 
+### 2026-11-22 — #88 A derived replay kept the totals of the run it was cut from
+- **Context:** checking that every replay's `run.completed` totals equal the sums over `node.completed`
+- **Problem:** the judge-outage replay reported 6150/486/0.00045 while its nodes summed to 5330/422/0.00039
+- **Cause:** `judgeOutage()` in `src/lib/mock/index.ts` drops a judge `node.completed` but copied the successful run's `run.completed` unchanged
+- **Lesson:** when a replay is derived by removing or adding node events, recompute the run totals too; `fixtures.test.ts` now enforces it for every replay
+- **Follow-up:** none
+- **Repeated?:** first time
+
 ### 2026-11-19 — #78 A login redirect is the wrong answer to `fetch`
 - **Context:** "Suggest with AI" posts JSON to a guarded `+server.ts` endpoint
 - **Problem:** with an expired session the guard's 303 was followed to the login page, so the script navigated away (to a `redirectTo` that answers 405 on GET) and the unsaved job form was lost
