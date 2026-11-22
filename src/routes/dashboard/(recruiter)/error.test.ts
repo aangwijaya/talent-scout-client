@@ -18,20 +18,20 @@ const { default: DashboardError } = await import('./+error.svelte');
 const { default: RunError } = await import('./runs/[runId]/+error.svelte');
 const { default: RootError } = await import('../../+error.svelte');
 
-describe.each([
-	['dashboard', DashboardError],
-	['graph run', RunError]
-])('%s error page', (_, Page) => {
-	it('gives a server error an h1, the banner, Try again and Back to jobs', () => {
-		state.page.status = 500;
-		const body = render(Page).body;
-		expect(body.match(/<h1/g)).toHaveLength(1);
-		expect(body).toMatch(/<h1[^>]*>Something went wrong<\/h1>/);
-		expect(body).toMatch(/<h2[^>]*>Couldn't load/);
-		expect(body).toContain('Server error');
-		expect(body).toContain('Try again');
-		expect(body).toMatch(/href="\/dashboard\/jobs"[^>]*>(<!---->)*Back to jobs/);
-	});
+describe('dashboard and graph run error pages', () => {
+	it.each(['dashboard', 'graph run'])(
+		'%s: gives a server error an h1, the banner, Try again and Back to jobs',
+		(name) => {
+			state.page.status = 500;
+			const body = name === 'dashboard' ? render(DashboardError).body : render(RunError).body;
+			expect(body.match(/<h1/g)).toHaveLength(1);
+			expect(body).toMatch(/<h1[^>]*>Something went wrong<\/h1>/);
+			expect(body).toMatch(/<h2[^>]*>Couldn't load/);
+			expect(body).toContain('Server error');
+			expect(body).toContain('Try again');
+			expect(body).toMatch(/href="\/dashboard\/jobs"[^>]*>(<!---->)*Back to jobs/);
+		}
+	);
 });
 
 describe('not found in the dashboard', () => {

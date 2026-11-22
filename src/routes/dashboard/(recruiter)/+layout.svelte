@@ -20,7 +20,7 @@
 		page.route.id === '/dashboard/(recruiter)/runs/[runId]' && !page.error
 	);
 
-	const touch = 'max-sm:min-h-11 max-sm:min-w-11';
+	const touch = 'max-sm:min-h-11 max-sm:min-w-11 touch:min-h-11';
 </script>
 
 <div class="min-h-dvh bg-canvas">
