@@ -2,11 +2,10 @@
 	import Briefcase from '@lucide/svelte/icons/briefcase';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
 	import Button from '$lib/components/Button.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import InlineError from '$lib/components/InlineError.svelte';
+	import ServerError from './ServerError.svelte';
 
 	const title = $derived(
 		page.route.id === '/dashboard/(recruiter)/jobs'
@@ -24,6 +23,7 @@
 	<Card class="mx-auto mt-10 max-w-md">
 		<EmptyState
 			icon={Briefcase}
+			level={1}
 			title="This job doesn't exist"
 			description="The link may be old. Pick a job from the list instead."
 		>
@@ -33,9 +33,5 @@
 		</EmptyState>
 	</Card>
 {:else}
-	<InlineError
-		{title}
-		message={page.error?.message ?? 'Something went wrong'}
-		onretry={() => invalidateAll()}
-	/>
+	<ServerError {title} />
 {/if}

@@ -8,6 +8,16 @@ export const DESCRIPTION_MAX = 12_000;
 export const RUBRIC_MIN = 3;
 export const RUBRIC_MAX = 6;
 
+/** Roving-tabindex keys for a tablist (WAI-ARIA tabs): the tab a key moves to, or null. */
+export function tabFromKey<T>(key: string, current: T, tabs: readonly T[]): T | null {
+	const at = tabs.indexOf(current);
+	if (key === 'ArrowRight') return tabs[(at + 1) % tabs.length];
+	if (key === 'ArrowLeft') return tabs[(at - 1 + tabs.length) % tabs.length];
+	if (key === 'Home') return tabs[0];
+	if (key === 'End') return tabs[tabs.length - 1];
+	return null;
+}
+
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,39}$/;
 const KEY_MAX = 40;
 const CRITERION_FIELDS = ['key', 'label', 'description', 'weight'] as const;

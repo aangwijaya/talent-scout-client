@@ -22,8 +22,7 @@ const job = {
 	created_at: '2026-11-04T10:00:00Z'
 } as unknown as Job;
 
-const page = (jobs: Job[]) =>
-	render(Page, { props: { data: { jobs }, params: {} } as never }).body;
+const page = (jobs: Job[]) => render(Page, { props: { data: { jobs }, params: {} } as never }).body;
 
 describe('jobs page', () => {
 	it('shows the empty state as an h2 with one New job action', () => {

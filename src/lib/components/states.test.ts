@@ -17,9 +17,7 @@ describe('EmptyState', () => {
 describe('InlineError', () => {
 	it('renders its title as a heading, never a paragraph', () => {
 		const props = { title: "Couldn't load this page", message: 'Server error' };
-		expect(render(InlineError, { props }).body).toMatch(
-			/<h2[^>]*>Couldn't load this page<\/h2>/
-		);
+		expect(render(InlineError, { props }).body).toMatch(/<h2[^>]*>Couldn't load this page<\/h2>/);
 		expect(render(InlineError, { props: { ...props, level: 1 as const } }).body).toMatch(
 			/<h1[^>]*>Couldn't load this page<\/h1>/
 		);
