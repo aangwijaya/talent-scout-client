@@ -20,6 +20,7 @@
 		charCount,
 		fieldId,
 		keyFromLabel,
+		tabFromKey,
 		validateJob,
 		type FieldErrors,
 		type JobValues,
@@ -217,7 +218,7 @@
 	{#if errors[field]}
 		<p
 			id="{fieldId(field)}-error"
-			class="mt-1.5 flex items-start gap-1.5 text-[13px] text-danger-text"
+			class="mt-1.5 flex items-start gap-1.5 text-body-sm text-danger-text"
 		>
 			<CircleAlert size={14} aria-hidden="true" class="mt-0.5 shrink-0" />
 			{errors[field]}
@@ -273,14 +274,21 @@
 								aria-controls="description-panel-{id}"
 								tabindex={tab === id ? 0 : -1}
 								onclick={() => (tab = id)}
+								onkeydown={(event) => {
+									const next = tabFromKey(event.key, tab, ['write', 'preview'] as const);
+									if (!next) return;
+									event.preventDefault();
+									tab = next;
+									document.getElementById(`description-tab-${next}`)?.focus();
+								}}
 								class={[
-									'h-8 rounded-full px-3 text-body-sm font-medium outline-hidden focus-visible:ring-2 focus-visible:ring-focus',
+									'h-8 rounded-full px-3 text-body-sm font-medium outline-hidden focus-visible:ring-2 focus-visible:ring-focus touch:h-11',
 									tab === id ? 'bg-card text-ink shadow-card' : 'text-muted hover:text-ink'
 								]}>{name}</button
 							>
 						{/each}
 					</div>
-					<span class="px-1 text-caption text-helper">{COPY.markdownHint}</span>
+					<span class="px-1 text-caption text-muted">{COPY.markdownHint}</span>
 				</div>
 				<div
 					id="description-panel-write"
@@ -298,7 +306,7 @@
 						aria-describedby={['description-hint', describedBy('description')]
 							.filter(Boolean)
 							.join(' ')}
-						class="block w-full resize-y bg-card p-3 font-mono text-[13px] leading-[1.6] text-body outline-hidden focus:ring-2 focus:ring-focus focus:ring-inset"
+						class="block w-full resize-y bg-card p-3 font-mono text-base leading-[1.6] text-body outline-hidden focus:ring-2 focus:ring-focus focus:ring-inset sm:text-body-sm"
 					></textarea>
 				</div>
 				<div
@@ -325,7 +333,7 @@
 			<div class="flex gap-2">
 				{#each [['open', 'Open'], ['closed', 'Closed']] as const as [value, name] (value)}
 					<label
-						class="flex h-9 cursor-pointer items-center rounded-full border border-line bg-card px-4 text-body-sm font-medium text-body has-checked:border-brand has-checked:bg-wash has-checked:text-brand has-focus-visible:ring-2 has-focus-visible:ring-focus"
+						class="flex h-9 cursor-pointer items-center rounded-full border border-line bg-card px-4 text-body-sm font-medium text-body has-checked:border-brand has-checked:bg-wash has-checked:text-brand has-focus-visible:ring-2 has-focus-visible:ring-focus touch:h-11"
 					>
 						<input type="radio" name="status" {value} bind:group={status} class="sr-only" />
 						{name}
@@ -384,7 +392,8 @@
 							href="{resolve('/dashboard/login')}?{returnQuery}"
 							target="_blank"
 							rel="noopener"
-							class="font-medium underline underline-offset-2">{COPY.signIn}</a
+							class="rounded-sm font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden"
+							>{COPY.signIn}</a
 						>
 					{:else}
 						{COPY.unavailable}
@@ -405,7 +414,7 @@
 			<p
 				id="rubric-error"
 				tabindex="-1"
-				class="mt-4 flex items-center gap-1.5 text-[13px] text-danger-text"
+				class="mt-4 flex items-center gap-1.5 text-body-sm text-danger-text"
 			>
 				<CircleAlert size={14} aria-hidden="true" />{errors.rubric}
 			</p>
@@ -434,7 +443,7 @@
 									readonly={locked}
 									aria-invalid={errors[`${at}.label`] ? true : undefined}
 									aria-describedby={describedBy(`${at}.label`)}
-									class={inputClass(`${at}.label`, 'h-10 font-medium')}
+									class={inputClass(`${at}.label`, 'h-10 font-medium touch:h-11')}
 								/>
 							</div>
 							<div>
@@ -454,7 +463,7 @@
 									spellcheck="false"
 									aria-invalid={errors[`${at}.key`] ? true : undefined}
 									aria-describedby={describedBy(`${at}.key`)}
-									class={inputClass(`${at}.key`, 'h-10 font-mono text-[13px] sm:text-[13px]')}
+									class={inputClass(`${at}.key`, 'h-10 font-mono sm:text-body-sm touch:h-11')}
 								/>
 							</div>
 							<div class="sm:col-span-2">
@@ -500,7 +509,7 @@
 											disabled={locked}
 											onclick={() => (row.weight = weight)}
 											class={[
-												'h-9 w-10 font-mono text-body-sm outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset disabled:cursor-not-allowed',
+												'h-9 w-10 font-mono text-body-sm outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset disabled:cursor-not-allowed touch:h-11 touch:w-11',
 												row.weight === weight
 													? 'bg-brand text-card'
 													: 'bg-card text-body hover:bg-subtle disabled:bg-subtle'
@@ -515,7 +524,7 @@
 									aria-label="Remove criterion {i + 1}"
 									disabled={rows.length <= RUBRIC_MIN}
 									onclick={() => remove(i)}
-									class="grid size-9 place-items-center rounded-full text-muted outline-hidden hover:bg-subtle hover:text-danger-text focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:text-helper disabled:hover:bg-transparent"
+									class="grid size-9 place-items-center rounded-full text-muted outline-hidden hover:bg-subtle hover:text-danger-text focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:text-helper disabled:hover:bg-transparent touch:size-11"
 								>
 									<Trash2 size={16} aria-hidden="true" />
 								</button>
@@ -535,7 +544,7 @@
 					type="button"
 					onclick={add}
 					disabled={rows.length >= RUBRIC_MAX}
-					class="inline-flex h-9 items-center gap-2 rounded-full px-3 text-body-sm font-medium text-brand outline-hidden hover:bg-wash focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:text-helper disabled:hover:bg-transparent"
+					class="inline-flex h-9 items-center gap-2 rounded-full px-3 text-body-sm font-medium text-brand outline-hidden hover:bg-wash focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:text-helper disabled:hover:bg-transparent touch:h-11"
 				>
 					<Plus size={16} aria-hidden="true" />{COPY.add}
 				</button>

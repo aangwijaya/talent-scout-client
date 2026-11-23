@@ -66,6 +66,24 @@ test('create a job with an edited AI suggestion, then see it listed and on its a
 	await expect(page.getByRole('heading', { name: 'Platform Engineer' })).toBeVisible();
 });
 
+test('the Write and Preview tabs move with the arrow keys', async ({ page, request }) => {
+	await setup(page, request, {});
+	await newJob(page);
+	const write = page.getByRole('tab', { name: 'Write' });
+	const preview = page.getByRole('tab', { name: 'Preview' });
+	await write.focus();
+
+	await page.keyboard.press('ArrowRight');
+	await expect(preview).toBeFocused();
+	await expect(preview).toHaveAttribute('aria-selected', 'true');
+	await expect(page.getByRole('tabpanel', { name: 'Preview' })).toBeVisible();
+
+	await page.keyboard.press('ArrowLeft');
+	await expect(write).toBeFocused();
+	await expect(write).toHaveAttribute('aria-selected', 'true');
+	await expect(page.locator('#field-description')).toBeVisible();
+});
+
 test('edit a job with applicants: the rubric is locked and the title change saves', async ({
 	page,
 	request

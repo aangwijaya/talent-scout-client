@@ -77,7 +77,11 @@ describe('applicants page', () => {
 	it('renders each applicant in the table and in the phone list, never truncated', () => {
 		const body = page([application]);
 		expect(body.split(longName)).toHaveLength(3);
-		expect(body).toContain('sm:hidden');
+		// The list serves phones and tablets; the five-column table starts at 1024px.
+		expect(body).toMatch(/<ul class="[^"]*lg:hidden/);
+		expect(body).toMatch(/<div class="[^"]*max-lg:hidden[^"]*"><table/);
+		// Secondary text in rows stays above 4.5:1 on the `wash` hover background.
+		expect(body.split('<tbody>')[1]).not.toMatch(/[\s"]text-helper/);
 		expect(body).toContain('min-h-11');
 		expect(body).not.toContain('truncate');
 		expect(body).toContain('[overflow-wrap:anywhere]');

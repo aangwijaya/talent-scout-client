@@ -83,7 +83,7 @@
 	<title>Apply: {data.job.title} · Talent Scout</title>
 </svelte:head>
 
-<main class={['min-h-screen bg-canvas text-body', applyBar && 'max-lg:pb-28']}>
+<main class={['min-h-dvh bg-canvas text-body', applyBar && 'max-lg:pb-28']}>
 	<header class="bg-wash px-4 py-10 lg:px-6">
 		<div class="mx-auto max-w-[640px] lg:max-w-[1080px]">
 			<p class="text-body-sm font-medium text-brand">Talent Scout</p>

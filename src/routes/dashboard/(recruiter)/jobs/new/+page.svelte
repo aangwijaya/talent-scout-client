@@ -17,12 +17,18 @@
 <div class="mx-auto max-w-[880px]">
 	<nav aria-label="Breadcrumb" class="text-body-sm">
 		<ol class="flex flex-wrap items-center gap-1">
-			<li><a href={jobsHref} class="text-muted hover:text-ink">Jobs</a></li>
+			<li>
+				<a
+					href={jobsHref}
+					class="rounded-sm text-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden"
+					>Jobs</a
+				>
+			</li>
 			<li aria-hidden="true" class="text-helper"><ChevronRight size={14} /></li>
 			<li aria-current="page" class="text-ink">New job</li>
 		</ol>
 	</nav>
-	<h1 class="mt-2 mb-6 text-[28px] leading-tight font-semibold text-ink">New job</h1>
+	<h1 class="mt-2 mb-6 text-heading-sm font-semibold text-ink">New job</h1>
 
 	<JobForm
 		mode="create"

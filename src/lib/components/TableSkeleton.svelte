@@ -7,12 +7,8 @@
 </script>
 
 <!-- Sized like the real cells: name over email, a badge, a score (DESIGN.md §3 loading state). -->
-<div
-	aria-busy="true"
-	aria-label={label}
-	role="status"
-	class="overflow-hidden rounded-panel border border-line bg-card"
->
+<div aria-busy="true" class="overflow-hidden rounded-panel border border-line bg-card">
+	<p role="status"><span class="sr-only">{label}</span></p>
 	<div class="h-10 bg-subtle"></div>
 	{#each { length: rows }, row (row)}
 		<div class="flex min-h-11 items-center gap-6 border-t border-line px-4 py-3">

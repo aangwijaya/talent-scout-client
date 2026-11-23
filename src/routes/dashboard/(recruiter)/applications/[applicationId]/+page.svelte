@@ -31,6 +31,8 @@
 	import type { PageProps } from './$types';
 
 	const NOTE_MAX = 1000;
+	const RING =
+		'rounded-sm focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden';
 	const HIGHLIGHT_MS = 2000;
 
 	let { data, form }: PageProps = $props();
@@ -76,19 +78,32 @@
 	let highlighted = $state<string | null>(null);
 	let highlightTimer: ReturnType<typeof setTimeout> | undefined;
 
+	// The Shortlist/Reject (or "Change to …") button that opened the panel; focus goes back there.
+	let opener: HTMLElement | null = null;
+
 	async function openPanel(value: DecisionValue) {
+		opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		panel = value;
 		note = '';
 		await tick();
 		document.getElementById('decision-note')?.focus();
 	}
 
+	async function closePanel() {
+		panel = null;
+		await tick();
+		// After a decision the Shortlist/Reject buttons are gone; "Change to …" takes their place.
+		const target = opener?.isConnected ? opener : document.getElementById('decision-change');
+		target?.focus();
+		opener = null;
+	}
+
 	const submitDecision: SubmitFunction = () => {
 		deciding = true;
 		return async ({ result, update }) => {
 			deciding = false;
-			if (result.type === 'success') panel = null;
 			await update({ reset: false });
+			if (result.type === 'success') await closePanel();
 		};
 	};
 
@@ -136,14 +151,14 @@
 			<ol class="flex flex-wrap items-center gap-1 text-body-sm text-helper">
 				<li>
 					<a
-						class="inline-flex min-h-6 items-center hover:text-brand hover:underline"
+						class={['inline-flex min-h-6 items-center hover:text-brand hover:underline', RING]}
 						href={resolve('/dashboard/(recruiter)/jobs')}>Jobs</a
 					>
 				</li>
 				<li aria-hidden="true">›</li>
 				<li>
 					<a
-						class="inline-flex min-h-6 items-center hover:text-brand hover:underline"
+						class={['inline-flex min-h-6 items-center hover:text-brand hover:underline', RING]}
 						href={resolve('/dashboard/(recruiter)/jobs/[jobId]', { jobId: detail.job.id })}
 						>{detail.job.title}</a
 					>
@@ -175,14 +190,20 @@
 						href={cvHref}
 						target="_blank"
 						rel="noopener"
-						class="inline-flex min-h-11 items-center gap-1.5 text-brand hover:underline lg:min-h-6"
+						class={[
+							'inline-flex min-h-11 items-center gap-1.5 text-brand hover:underline lg:min-h-6',
+							RING
+						]}
 					>
 						<FileText size={16} aria-hidden="true" /> CV (PDF)
 					</a>
 					{#if runHref}
 						<a
 							href="{runHref}?from={application.id}"
-							class="inline-flex min-h-11 items-center gap-1.5 text-brand hover:underline lg:min-h-6"
+							class={[
+								'inline-flex min-h-11 items-center gap-1.5 text-brand hover:underline lg:min-h-6',
+								RING
+							]}
 						>
 							<Network size={16} aria-hidden="true" /> View graph run
 						</a>
@@ -254,7 +275,7 @@
 					{decision.note ? `“${decision.note}”` : 'No note.'}
 				</p>
 			</div>
-			<Button onclick={() => openPanel(shortlisted ? 'reject' : 'shortlist')}>
+			<Button id="decision-change" onclick={() => openPanel(shortlisted ? 'reject' : 'shortlist')}>
 				{shortlisted ? 'Change to reject' : 'Change to shortlist'}
 			</Button>
 		</div>
@@ -323,7 +344,7 @@
 				>
 					{shortlist ? 'Confirm shortlist' : 'Confirm reject'}
 				</Button>
-				<Button size="lg" class="lg:h-9" onclick={() => (panel = null)}>Cancel</Button>
+				<Button size="lg" class="lg:h-9" onclick={closePanel}>Cancel</Button>
 			</div>
 		</form>
 	{/if}
@@ -379,7 +400,10 @@
 			{#if runHref}
 				<a
 					href="{runHref}?from={application.id}"
-					class="mt-2 inline-flex min-h-6 text-body-sm font-medium text-brand hover:underline"
+					class={[
+						'mt-2 inline-flex min-h-6 text-body-sm font-medium text-brand hover:underline',
+						RING
+					]}
 				>
 					See where it failed in the graph run →
 				</a>
@@ -395,7 +419,10 @@
 			{#if runHref}
 				<a
 					href="{runHref}?from={application.id}"
-					class="inline-flex min-h-6 items-center text-body-sm font-medium text-brand hover:underline"
+					class={[
+						'inline-flex min-h-6 items-center text-body-sm font-medium text-brand hover:underline',
+						RING
+					]}
 				>
 					Watch the graph live →
 				</a>
@@ -421,7 +448,7 @@
 				class="flex flex-col items-center gap-2 rounded-panel border border-dashed border-line px-6 py-12 text-center"
 			>
 				<MessageCircle size={32} aria-hidden="true" class="text-helper" />
-				<p class="text-subheading font-semibold text-ink">The screening hasn't started</p>
+				<h2 class="text-subheading font-medium text-ink">The screening hasn't started</h2>
 				<p class="text-body-sm text-muted">
 					The transcript and scores appear here after {name} finishes.
 				</p>
@@ -444,7 +471,7 @@
 					onclick={() => (tab = item.id)}
 					onkeydown={switchTab}
 					class={[
-						'h-10 cursor-pointer rounded-full px-3 text-body-sm font-medium outline-hidden focus-visible:ring-2 focus-visible:ring-focus',
+						'h-10 cursor-pointer rounded-full px-3 text-body-sm font-medium outline-hidden focus-visible:ring-2 focus-visible:ring-focus touch:h-11',
 						tab === item.id ? 'bg-card text-ink shadow-card' : 'text-muted'
 					]}
 				>
@@ -500,7 +527,7 @@
 							Overall score
 						</h2>
 						<p class="mt-1 flex items-baseline gap-2">
-							<span class="font-mono text-[32px] leading-none text-ink">
+							<span class="font-mono text-subheading leading-none text-ink">
 								{formatScore(application.overall_score) ?? '—'}
 							</span>
 							{#if application.overall_score !== null}

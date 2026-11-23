@@ -183,7 +183,8 @@ test('the recruiter logs in and sees the seeded job', async ({ page, context }) 
 	await page.getByRole('button', { name: 'Sign in' }).click();
 
 	await expect(page).toHaveURL(/\/dashboard\/jobs$/);
-	await expect(page.getByText(seedJobTitle, { exact: true })).toBeVisible();
+	// The jobs page renders each title twice (list rows below lg, the table from lg), so match the visible link.
+	await expect(page.getByRole('link', { name: seedJobTitle, exact: true })).toBeVisible();
 	expect((await context.cookies()).some(({ name }) => name === 'ts_session')).toBe(true);
 });
 

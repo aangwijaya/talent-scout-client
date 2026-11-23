@@ -8,6 +8,8 @@
 
 	const jobHref = $derived(resolve('/dashboard/(recruiter)/jobs/[jobId]', { jobId: data.job.id }));
 	const count = $derived(data.job.application_count);
+	const crumb =
+		'rounded-sm text-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden';
 </script>
 
 <svelte:head><title>Edit {data.job.title} · Talent Scout</title></svelte:head>
@@ -16,20 +18,18 @@
 	<nav aria-label="Breadcrumb" class="text-body-sm">
 		<ol class="flex flex-wrap items-center gap-1">
 			<li>
-				<a href={resolve('/dashboard/(recruiter)/jobs')} class="text-muted hover:text-ink">Jobs</a>
+				<a href={resolve('/dashboard/(recruiter)/jobs')} class={crumb}>Jobs</a>
 			</li>
 			<li aria-hidden="true" class="text-helper"><ChevronRight size={14} /></li>
 			<li>
-				<a href={jobHref} class="[overflow-wrap:anywhere] text-muted hover:text-ink"
-					>{data.job.title}</a
-				>
+				<a href={jobHref} class={[crumb, '[overflow-wrap:anywhere]']}>{data.job.title}</a>
 			</li>
 			<li aria-hidden="true" class="text-helper"><ChevronRight size={14} /></li>
 			<li aria-current="page" class="text-ink">Edit</li>
 		</ol>
 	</nav>
 	<div class="mt-2 mb-6 flex items-baseline justify-between gap-4">
-		<h1 class="text-[28px] leading-tight font-semibold text-ink">Edit job</h1>
+		<h1 class="text-heading-sm font-semibold text-ink">Edit job</h1>
 		<p class="text-body-sm text-muted">
 			<span class="font-mono">{count}</span>
 			{count === 1 ? 'applicant' : 'applicants'}

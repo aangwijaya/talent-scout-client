@@ -35,7 +35,7 @@
 		type ViewMode
 	} from '$lib/stores/run-view';
 	import EventList from './EventList.svelte';
-	import { receivedSeq, runHeader } from './header';
+	import { createAnnouncer, latestAnnouncement, receivedSeq, runHeader } from './header';
 	import NodeDetail from './NodeDetail.svelte';
 	import type { PageProps } from './$types';
 
@@ -63,6 +63,29 @@
 	const header = $derived(runHeader(run));
 	const detailId = $derived(pinned ?? run.activeNodeId ?? 'planner');
 	const loading = $derived(events.length === 0 && !showConnectionAlert(connection));
+
+	// The polite live region: node starts, failures, retries and the run's end, at most one
+	// message per ANNOUNCE_MS so a burst of events doesn't flood a screen reader.
+	const ANNOUNCE_MS = 1500;
+	let announced = $state('');
+	let seen = 0;
+	const announcer = createAnnouncer(ANNOUNCE_MS, (text) => (announced = text));
+
+	$effect(() => {
+		if (events.length < seen) seen = 0;
+		const fresh = events.slice(seen);
+		seen = events.length;
+		const text = mode === 'live' ? latestAnnouncement(fresh) : null;
+		if (text) announcer.push(text);
+	});
+	// "Connection lost" is the alert banner; coming back from it is said here.
+	let wasDown = false;
+	$effect(() => {
+		const down = showConnectionAlert(connection);
+		if (wasDown && connection === 'live') announcer.push('Reconnected');
+		wasDown = down;
+	});
+	$effect(() => () => announcer.dispose());
 
 	const backHref = $derived(
 		data.from
@@ -163,7 +186,7 @@
 	const skeleton = 'inline-block rounded-full bg-subtle align-middle motion-safe:animate-pulse';
 	const pressed = 'bg-card text-ink shadow-card';
 	const iconButton =
-		'inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-subtle focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-helper';
+		'inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted touch:size-11 hover:bg-subtle focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-helper';
 </script>
 
 <svelte:head><title>Graph run · Talent Scout</title></svelte:head>
@@ -232,7 +255,7 @@
 					disabled={ended}
 					onclick={() => setMode('live')}
 					class={[
-						'inline-flex h-8 cursor-pointer items-center gap-2 rounded-full px-3 text-body-sm font-medium focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden disabled:cursor-not-allowed',
+						'inline-flex h-8 cursor-pointer items-center gap-2 rounded-full px-3 text-body-sm font-medium focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden disabled:cursor-not-allowed touch:h-11',
 						mode === 'live' ? pressed : 'text-muted'
 					]}
 				>
@@ -252,7 +275,7 @@
 					aria-pressed={mode === 'replay'}
 					onclick={() => setMode('replay')}
 					class={[
-						'inline-flex h-8 cursor-pointer items-center rounded-full px-3 text-body-sm font-medium focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden',
+						'inline-flex h-8 cursor-pointer items-center rounded-full px-3 text-body-sm font-medium focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-hidden touch:h-11',
 						mode === 'replay' ? pressed : 'text-muted'
 					]}>Replay</button
 				>
@@ -286,7 +309,7 @@
 							aria-label={playing ? 'Pause' : 'Play'}
 							disabled={events.length === 0}
 							onclick={togglePlay}
-							class="inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-brand text-card hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:bg-subtle disabled:text-helper"
+							class="inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-brand text-card hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:bg-subtle disabled:text-helper touch:size-11"
 						>
 							{#if playing}<Pause size={16} fill="currentColor" aria-hidden="true" />{:else}<Play
 									size={16}
@@ -323,11 +346,13 @@
 					</span>
 				</div>
 			{:else}
-				<p role="status" class="text-caption text-muted">
+				<!-- Not live: it changes on every event. The announcer below speaks for it. -->
+				<p class="text-caption text-muted">
 					{liveStatusText(connection, ended, lastSeq)}
 				</p>
 			{/if}
 		</div>
+		<p role="status" class="sr-only">{announced}</p>
 	</header>
 
 	{#if showConnectionAlert(connection)}
@@ -379,7 +404,7 @@
 			{/if}
 		</section>
 		<aside
-			class="flex max-h-[calc(100dvh-3.5rem)] min-w-0 grow basis-[360px] flex-col border-l border-line bg-card"
+			class="flex max-h-[calc(100dvh-3.5rem)] min-w-0 grow basis-[360px] flex-col border-line bg-card min-[1000px]:border-l"
 		>
 			{#if loading}
 				<div class="flex flex-col gap-3 p-6" aria-hidden="true">

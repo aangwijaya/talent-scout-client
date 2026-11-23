@@ -28,7 +28,12 @@
 		neutral: 'border-line bg-card text-body hover:bg-subtle',
 		destructive: 'border-danger bg-card text-danger-text hover:bg-danger/10'
 	};
-	const sizes = { sm: 'h-8 gap-1.5 px-3', md: 'h-9 gap-2 px-4', lg: 'h-11 gap-2 px-4' };
+	// Under a finger (`touch:`) every size is a 44px target; a mouse keeps the compact heights.
+	const sizes = {
+		sm: 'h-8 gap-1.5 px-3 touch:h-11',
+		md: 'h-9 gap-2 px-4 touch:h-11',
+		lg: 'h-11 gap-2 px-4'
+	};
 	const classes = $derived([
 		'inline-flex cursor-pointer items-center justify-center rounded-full border text-body-sm font-medium outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-line disabled:bg-subtle disabled:text-helper',
 		variants[variant],

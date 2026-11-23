@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatCount } from '$lib/components/graph-layout';
 import { formatCost } from '$lib/components/review';
 import { MOCK_RUN_ID, mockRunEvents } from '$lib/mock';
 import { graphRunSnapshot } from '$lib/server/api/fixtures';
 import { initialRunState, reduceRun } from '$lib/stores/graph';
-import { receivedSeq, runHeader } from './header';
+import { announcement, latestAnnouncement, receivedSeq, runHeader } from './header';
 
 const snapshot = graphRunSnapshot(MOCK_RUN_ID)!;
 const events = mockRunEvents[MOCK_RUN_ID];
@@ -35,5 +35,62 @@ describe('receivedSeq', () => {
 	it('is 0 before the first event, then the seq of the newest one', () => {
 		expect(receivedSeq([])).toBe(0);
 		expect(receivedSeq(events.slice(0, 3))).toBe(events[2].seq);
+	});
+});
+
+describe('announcement', () => {
+	it('names node starts and the end of the run, and stays quiet on edges and checks', () => {
+		const said = events.map(announcement);
+		expect(said).toContain('planner started');
+		expect(said).toContain('plan check started');
+		expect(said.at(-1)).toBe('Run completed');
+		events.forEach((event, i) => {
+			if (event.event === 'edge.traversed' || event.event.startsWith('check.'))
+				expect(said[i]).toBeNull();
+		});
+	});
+
+	it('says failures and retries with the attempt', () => {
+		const base = { run_id: 'r', seq: 1, ts: '', attempt: 2, node_id: 'judge' as const };
+		expect(
+			announcement({ ...base, event: 'node.failed', data: { error: 'x', will_retry: true } })
+		).toBe('judge failed, retrying');
+		expect(
+			announcement({
+				...base,
+				event: 'loop.retry',
+				data: { attempt: 2, max_attempts: 3, reason: 'r', feedback: 'f' }
+			})
+		).toBe('judge retry, attempt 2 of 3');
+		expect(
+			announcement({ ...base, node_id: null, event: 'run.failed', data: { error: 'boom' } })
+		).toBe('Run failed');
+	});
+
+	it('picks the newest announceable event of a batch', () => {
+		expect(latestAnnouncement([])).toBeNull();
+		expect(latestAnnouncement(events)).toBe('Run completed');
+	});
+});
+
+describe('createAnnouncer', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('says at most one message per interval, and the newest one wins', async () => {
+		vi.useFakeTimers();
+		const { createAnnouncer } = await import('./header');
+		const said: string[] = [];
+		const announcer = createAnnouncer(1500, (text) => said.push(text));
+		announcer.push('Planner started');
+		announcer.push('Planner passed');
+		announcer.push('Plan check started');
+		expect(said).toEqual(['Planner started']);
+		vi.advanceTimersByTime(1499);
+		expect(said).toEqual(['Planner started']);
+		vi.advanceTimersByTime(1);
+		expect(said).toEqual(['Planner started', 'Plan check started']);
+		vi.advanceTimersByTime(5000);
+		expect(said).toHaveLength(2);
+		announcer.dispose();
 	});
 });

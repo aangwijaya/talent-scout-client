@@ -7,6 +7,7 @@ import {
 	mapServerField,
 	patchBody,
 	retryAfterMinutes,
+	tabFromKey,
 	validateJob,
 	type JobValues
 } from './job-form';
@@ -183,4 +184,22 @@ describe('retryAfterMinutes', () => {
 
 it('caps the demo at 20 jobs', () => {
 	expect(JOB_LIMIT).toBe(20);
+});
+
+describe('tabFromKey', () => {
+	const tabs = ['write', 'preview'] as const;
+
+	it('moves between the Write and Preview tabs with the arrow keys, wrapping around', () => {
+		expect(tabFromKey('ArrowRight', 'write', tabs)).toBe('preview');
+		expect(tabFromKey('ArrowRight', 'preview', tabs)).toBe('write');
+		expect(tabFromKey('ArrowLeft', 'write', tabs)).toBe('preview');
+		expect(tabFromKey('ArrowLeft', 'preview', tabs)).toBe('write');
+	});
+
+	it('jumps to the first and last tab with Home and End, and ignores other keys', () => {
+		expect(tabFromKey('Home', 'preview', tabs)).toBe('write');
+		expect(tabFromKey('End', 'write', tabs)).toBe('preview');
+		expect(tabFromKey('Enter', 'write', tabs)).toBeNull();
+		expect(tabFromKey('Tab', 'write', tabs)).toBeNull();
+	});
 });
