@@ -46,3 +46,32 @@ export function latestAnnouncement(events: readonly RunEvent[]): string | null {
 
 /** The seq of the newest received event, or 0 before the first one arrives. */
 export const receivedSeq = (events: readonly RunEvent[]) => events.at(-1)?.seq ?? 0;
+
+/**
+ * Say at most one message per `ms`: the first at once, then the newest one that arrived meanwhile.
+ * A burst of graph events would otherwise flood a screen reader.
+ */
+export function createAnnouncer(ms: number, say: (text: string) => void) {
+	let pending: string | null = null;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const flush = () => {
+		if (pending === null) {
+			timer = undefined;
+			return;
+		}
+		say(pending);
+		pending = null;
+		timer = setTimeout(flush, ms);
+	};
+	return {
+		push(text: string) {
+			pending = text;
+			if (!timer) flush();
+		},
+		dispose() {
+			clearTimeout(timer);
+			timer = undefined;
+			pending = null;
+		}
+	};
+}

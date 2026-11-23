@@ -35,7 +35,7 @@
 		type ViewMode
 	} from '$lib/stores/run-view';
 	import EventList from './EventList.svelte';
-	import { latestAnnouncement, receivedSeq, runHeader } from './header';
+	import { createAnnouncer, latestAnnouncement, receivedSeq, runHeader } from './header';
 	import NodeDetail from './NodeDetail.svelte';
 	import type { PageProps } from './$types';
 
@@ -69,39 +69,23 @@
 	const ANNOUNCE_MS = 1500;
 	let announced = $state('');
 	let seen = 0;
-	let pending: string | null = null;
-	let announceTimer: ReturnType<typeof setTimeout> | undefined;
-
-	function flushAnnouncement() {
-		if (!pending) return;
-		announced = pending;
-		pending = null;
-		announceTimer = setTimeout(() => {
-			announceTimer = undefined;
-			flushAnnouncement();
-		}, ANNOUNCE_MS);
-	}
+	const announcer = createAnnouncer(ANNOUNCE_MS, (text) => (announced = text));
 
 	$effect(() => {
 		if (events.length < seen) seen = 0;
 		const fresh = events.slice(seen);
 		seen = events.length;
 		const text = mode === 'live' ? latestAnnouncement(fresh) : null;
-		if (!text) return;
-		pending = text;
-		if (!announceTimer) flushAnnouncement();
+		if (text) announcer.push(text);
 	});
 	// "Connection lost" is the alert banner; coming back from it is said here.
 	let wasDown = false;
 	$effect(() => {
 		const down = showConnectionAlert(connection);
-		if (wasDown && connection === 'live') {
-			pending = 'Reconnected';
-			if (!announceTimer) flushAnnouncement();
-		}
+		if (wasDown && connection === 'live') announcer.push('Reconnected');
 		wasDown = down;
 	});
-	$effect(() => () => clearTimeout(announceTimer));
+	$effect(() => () => announcer.dispose());
 
 	const backHref = $derived(
 		data.from

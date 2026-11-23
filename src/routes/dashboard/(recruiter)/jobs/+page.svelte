@@ -40,7 +40,8 @@
 		<p class="mt-1 text-body-sm text-muted">{COPY.description}</p>
 	</div>
 	<div class="flex flex-col gap-1.5 sm:items-end">
-		{#if atLimit}
+		<!-- With no jobs the empty state's New job is the screen's one primary action (DESIGN.md). -->
+		{#if data.jobs.length > 0 && atLimit}
 			<Button
 				variant="primary"
 				disabled
@@ -50,7 +51,7 @@
 			>
 				<Plus size={16} aria-hidden="true" />{COPY.newJob}
 			</Button>
-		{:else}
+		{:else if data.jobs.length > 0}
 			<Button
 				href={resolve('/dashboard/(recruiter)/jobs/new')}
 				variant="primary"

@@ -55,7 +55,8 @@
 	onclick={copy}
 	aria-label={ariaLabel}
 	class={[
-		iconOnly && 'size-11 shrink-0 px-0',
+		// Important: Button's own h-9/px-4 come later in the CSS and would win with a mouse.
+		iconOnly && 'size-11! shrink-0 px-0!',
 		className,
 		status === 'copied' && 'border-success! text-success-text!'
 	]}

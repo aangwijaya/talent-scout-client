@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatCount } from '$lib/components/graph-layout';
 import { formatCost } from '$lib/components/review';
 import { MOCK_RUN_ID, mockRunEvents } from '$lib/mock';
@@ -70,5 +70,27 @@ describe('announcement', () => {
 	it('picks the newest announceable event of a batch', () => {
 		expect(latestAnnouncement([])).toBeNull();
 		expect(latestAnnouncement(events)).toBe('Run completed');
+	});
+});
+
+describe('createAnnouncer', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('says at most one message per interval, and the newest one wins', async () => {
+		vi.useFakeTimers();
+		const { createAnnouncer } = await import('./header');
+		const said: string[] = [];
+		const announcer = createAnnouncer(1500, (text) => said.push(text));
+		announcer.push('Planner started');
+		announcer.push('Planner passed');
+		announcer.push('Plan check started');
+		expect(said).toEqual(['Planner started']);
+		vi.advanceTimersByTime(1499);
+		expect(said).toEqual(['Planner started']);
+		vi.advanceTimersByTime(1);
+		expect(said).toEqual(['Planner started', 'Plan check started']);
+		vi.advanceTimersByTime(5000);
+		expect(said).toHaveLength(2);
+		announcer.dispose();
 	});
 });

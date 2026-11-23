@@ -30,7 +30,12 @@ describe('jobs page', () => {
 		expect(body).toMatch(/<h2[^>]*>No jobs yet<\/h2>/);
 		expect(body).toContain('Create a job and share its apply link to start screening.');
 		expect(body).toContain('lucide-briefcase');
-		expect(body.match(/href="\/dashboard\/jobs\/new"/g)).toHaveLength(2);
+		// DESIGN.md: one primary action per screen, so the header button steps aside while the list is empty.
+		expect(body.match(/href="\/dashboard\/jobs\/new"/g)).toHaveLength(1);
+	});
+
+	it('keeps New job in the header once there are jobs', () => {
+		expect(page([job]).match(/href="\/dashboard\/jobs\/new"/g)).toHaveLength(1);
 	});
 
 	it('keeps the six-column table for 1024px and up and a list row below it', () => {

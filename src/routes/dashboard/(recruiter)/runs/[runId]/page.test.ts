@@ -95,4 +95,12 @@ describe('graph run page', () => {
 		expect(body).toContain(MOCK_RUN_ID.slice(0, 8));
 		expect(body).toMatch(/<h1[^>]*class="[^"]*text-heading-sm font-semibold/);
 	});
+
+	it('has one quiet live region in the header: the per-event status line is not live', () => {
+		const header = page(MOCK_RUNNING_RUN_ID).split('</header>')[0];
+		const live = header.match(/<[^>]*(role="status"|aria-live)[^>]*>/g) ?? [];
+		expect(live).toHaveLength(1);
+		expect(live[0]).toContain('sr-only');
+		expect(header).toMatch(/<p class="[^"]*">\s*(Receiving events|Connecting|Reconnecting)/);
+	});
 });
