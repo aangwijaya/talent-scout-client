@@ -158,6 +158,20 @@ test('apply, finish the screening chat, then review the application', async ({ p
 	});
 });
 
+test('at tablet width the jobs and applicants pages do not scroll sideways', async ({ page }) => {
+	await page.setViewportSize({ width: 768, height: 1024 });
+	await page.goto('/dashboard/jobs');
+	await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+	await page.getByRole('button', { name: 'Sign in' }).click();
+	await expect(page).toHaveURL(/\/dashboard\/jobs$/);
+	await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
+	await expectNoHorizontalScroll(page);
+
+	await page.goto(`/dashboard/jobs/${JOB_ID}`);
+	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+	await expectNoHorizontalScroll(page);
+});
+
 test('without DEMO_PASSWORD there is no demo card and no apply notice', async ({ page }) => {
 	await page.goto('/');
 	await expect(page).toHaveURL(/\/dashboard\/login/);
@@ -220,7 +234,7 @@ test.describe('public demo', () => {
 		await page.getByLabel('Password', { exact: true }).fill(shown);
 		await page.getByRole('button', { name: 'Sign in' }).click();
 		await expect(page).toHaveURL(/\/dashboard\/jobs$/);
-		await expect(page.getByRole('table')).toBeVisible();
+		await expect(page.getByRole('heading', { level: 1, name: 'Jobs' })).toBeVisible();
 	});
 
 	test('the apply page warns that the demo is public', async ({ page }) => {
