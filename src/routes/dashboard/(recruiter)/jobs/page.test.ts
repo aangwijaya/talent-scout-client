@@ -15,7 +15,7 @@ const job = {
 	id: 'job-1',
 	title: 'Senior Frontend Engineer',
 	status: 'open',
-	apply_url: 'https://talentscout.vercel.app/apply/job-1',
+	apply_url: 'https://talentscout-id.vercel.app/apply/job-1',
 	application_count: 3,
 	description: 'About the role',
 	rubric: [],

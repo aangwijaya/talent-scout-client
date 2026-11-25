@@ -107,7 +107,7 @@ export const jobs: Job[] = [
 		rubric,
 		status: 'open',
 		spoken_english_required: false,
-		apply_url: `https://talentscout.vercel.app/apply/${MOCK_JOB_ID}`,
+		apply_url: `https://talentscout-id.vercel.app/apply/${MOCK_JOB_ID}`,
 		application_count: 6,
 		created_at: CREATED_AT,
 		updated_at: CREATED_AT

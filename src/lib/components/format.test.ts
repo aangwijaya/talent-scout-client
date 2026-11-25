@@ -37,8 +37,8 @@ describe('sessionLabel', () => {
 
 describe('withoutScheme', () => {
 	it('drops the scheme from an apply URL', () => {
-		expect(withoutScheme('https://talentscout.vercel.app/apply/1')).toBe(
-			'talentscout.vercel.app/apply/1'
+		expect(withoutScheme('https://talentscout-id.vercel.app/apply/1')).toBe(
+			'talentscout-id.vercel.app/apply/1'
 		);
 	});
 });

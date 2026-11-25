@@ -93,6 +93,15 @@ describe('mockApi', () => {
 		});
 	});
 
+	it('builds public links on the production domain', async () => {
+		const origin = 'https://talentscout-id.vercel.app/';
+		const { items } = await mockApi.listJobs();
+		expect(items.length).toBeGreaterThan(0);
+		for (const job of items) expect(job.apply_url.startsWith(origin)).toBe(true);
+		const { invite_url } = await mockApi.resendInvite(MOCK_APPLICATION_IDS.invited);
+		expect(invite_url?.startsWith(origin)).toBe(true);
+	});
+
 	it('reports run snapshots that match their replay data', async () => {
 		await expect(mockApi.getGraphRun(MOCK_RUN_ID)).resolves.toMatchObject({ status: 'succeeded' });
 		const failed = await mockApi.getGraphRun(MOCK_PLANNER_FAILED_RUN_ID);

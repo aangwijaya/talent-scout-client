@@ -151,7 +151,7 @@ export const mockApi: TalentScoutApi = {
 		return {
 			session_id: crypto.randomUUID(),
 			expires_at: inMs(7 * 24 * 60 * MINUTE_MS),
-			invite_url: `https://talentscout.vercel.app/s/${MOCK_TOKENS.invited}`
+			invite_url: `https://talentscout-id.vercel.app/s/${MOCK_TOKENS.invited}`
 		};
 	},
 
