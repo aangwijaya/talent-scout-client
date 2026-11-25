@@ -58,7 +58,8 @@ describe('new job', () => {
 				label,
 				description,
 				weight: Number(weight)
-			}))
+			})),
+			spoken_english_required: false
 		});
 		expect(isRedirect(thrown) && thrown.status).toBe(303);
 		expect(isRedirect(thrown) && thrown.location).toMatch(
@@ -104,7 +105,8 @@ describe('new job', () => {
 		const job: Job = await mockApi.createJob({
 			title: 'Staff Engineer',
 			description: 'x'.repeat(60),
-			rubric: []
+			rubric: [],
+			spoken_english_required: false
 		});
 		expect(job.status).toBe('open');
 	});

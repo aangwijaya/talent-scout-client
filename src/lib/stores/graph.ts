@@ -65,6 +65,7 @@ export const NODE_IDS = [
 	'scorer',
 	'evidence_check',
 	'authenticity',
+	'fluency',
 	'recruiter_gate'
 ] as const satisfies readonly NodeId[];
 

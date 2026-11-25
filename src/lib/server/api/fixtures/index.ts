@@ -106,6 +106,7 @@ export const jobs: Job[] = [
 		description: jobDescription,
 		rubric,
 		status: 'open',
+		spoken_english_required: false,
 		apply_url: `https://talentscout.vercel.app/apply/${MOCK_JOB_ID}`,
 		application_count: 6,
 		created_at: CREATED_AT,
@@ -118,13 +119,15 @@ export const publicJobs: PublicJob[] = [
 		id: MOCK_JOB_ID,
 		title: 'Senior Frontend Engineer',
 		description: jobDescription,
-		status: 'open'
+		status: 'open',
+		spoken_english_required: false
 	},
 	{
 		id: MOCK_CLOSED_JOB_ID,
 		title: 'Staff Backend Engineer',
 		description: 'This role is no longer accepting applications.',
-		status: 'closed'
+		status: 'closed',
+		spoken_english_required: false
 	}
 ];
 
@@ -322,6 +325,7 @@ const nodeTypes: [NodeId, NodeType][] = [
 	['scorer', 'worker'],
 	['evidence_check', 'code'],
 	['authenticity', 'worker'],
+	['fluency', 'worker'],
 	['recruiter_gate', 'human_gate']
 ];
 
