@@ -84,8 +84,9 @@ export interface paths {
 		put?: never;
 		/**
 		 * Suggest a draft rubric for a job
-		 * @description Asks the model for 3-6 rubric criteria. Nothing is stored; the recruiter
-		 *     edits the draft before saving. The model output is retried once on
+		 * @description Asks the model for 3-6 rubric criteria and whether the job requires spoken
+		 *     English, with a short reason. This is a suggestion only: nothing is stored,
+		 *     and the recruiter sets the job field. The model output is retried once on
 		 *     invalid output, then the endpoint returns `llm_unavailable`.
 		 */
 		post: operations['suggestJobRubric'];
@@ -111,8 +112,10 @@ export interface paths {
 		head?: never;
 		/**
 		 * Edit a job
-		 * @description Any subset of `title`, `description`, `rubric` and `status`. The rubric
-		 *     cannot change once the job has any application.
+		 * @description Any subset of `title`, `description`, `rubric`, `status` and
+		 *     `spoken_english_required`. The rubric cannot change once the job has any
+		 *     application. Editing `spoken_english_required` only affects sessions
+		 *     created after the edit.
 		 */
 		patch: operations['updateJob'];
 		trace?: never;
@@ -159,7 +162,7 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** Applicant detail with session, transcript, scores, and authenticity */
+		/** Applicant detail with session, transcript, scores, authenticity, and fluency */
 		get: operations['getApplication'];
 		put?: never;
 		post?: never;
@@ -178,6 +181,27 @@ export interface paths {
 		};
 		/** Download the applicant CV */
 		get: operations['downloadApplicationCV'];
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/applications/{applicationId}/messages/{messageId}/audio': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/**
+		 * Stream a spoken answer recording
+		 * @description Streams the recording from the private `audio` bucket through the server.
+		 *     No Storage URL is returned to the client.
+		 */
+		get: operations['downloadApplicationMessageAudio'];
 		put?: never;
 		post?: never;
 		delete?: never;
@@ -246,8 +270,37 @@ export interface paths {
 		};
 		get?: never;
 		put?: never;
-		/** Start the screening session */
+		/**
+		 * Start the screening session
+		 * @description For a voice session `recording_consent` is required (400 when missing).
+		 *     With `false` the session stays a voice session but every answer is a text
+		 *     fallback with reason `declined_recording`. The field is ignored for a
+		 *     text session.
+		 */
 		post: operations['startSession'];
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	'/sessions/{token}/audio': {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Upload a spoken answer recording
+		 * @description Transcribes the audio (language auto-detected) and stores it in the private
+		 *     `audio` bucket. This does not send an answer; send the returned `audio_id`
+		 *     with `POST /sessions/{token}/messages`. A storage failure is not an error:
+		 *     `stored` is `false` and the answer can still be sent.
+		 */
+		post: operations['uploadSessionAudio'];
 		delete?: never;
 		options?: never;
 		head?: never;
@@ -361,12 +414,16 @@ export interface components {
 					| 'already_applied'
 					| 'session_already_started'
 					| 'invalid_state'
+					| 'audio_budget_exceeded'
 					| 'session_expired'
 					| 'session_completed'
+					| 'recording_deleted'
 					| 'file_too_large'
+					| 'no_speech'
 					| 'rate_limited'
 					| 'internal_error'
 					| 'llm_unavailable'
+					| 'transcription_unavailable'
 					| 'db_unavailable';
 				message: string;
 				details: {
@@ -417,6 +474,8 @@ export interface components {
 			description: string;
 			rubric: components['schemas']['RubricCriterion'][];
 			status: components['schemas']['JobStatus'];
+			/** @default false */
+			spoken_english_required: boolean;
 			/** Format: uri */
 			apply_url: string;
 			application_count: number;
@@ -430,12 +489,15 @@ export interface components {
 			description: string;
 			rubric: components['schemas']['RubricCriterion'][];
 			status?: components['schemas']['JobStatus'];
+			/** @default false */
+			spoken_english_required: boolean;
 		};
 		JobUpdateRequest: {
 			title?: string;
 			description?: string;
 			rubric?: components['schemas']['RubricCriterion'][];
 			status?: components['schemas']['JobStatus'];
+			spoken_english_required?: boolean;
 		};
 		RubricSuggestionRequest: {
 			title: string;
@@ -443,6 +505,8 @@ export interface components {
 		};
 		RubricSuggestionResponse: {
 			rubric: components['schemas']['RubricCriterion'][];
+			spoken_english_required?: boolean;
+			spoken_english_reason?: string;
 		};
 		PublicJob: {
 			/** Format: uuid */
@@ -450,6 +514,8 @@ export interface components {
 			title: string;
 			description: string;
 			status: components['schemas']['JobStatus'];
+			/** @default false */
+			spoken_english_required: boolean;
 		};
 		/** @enum {string} */
 		ApplicationStatus:
@@ -484,6 +550,14 @@ export interface components {
 			pasted_chars: number;
 			typed_chars: number;
 			duration_ms: number;
+			/** @enum {string} */
+			mode?: 'typed' | 'spoken';
+			/** @enum {string} */
+			fallback_reason?:
+				'chose_text' | 'declined_recording' | 'microphone_unavailable' | 'transcription_failed';
+			start_latency_ms?: number;
+			speaking_ms?: number;
+			rerecord_count?: number;
 		};
 		Message: {
 			/** Format: uuid */
@@ -500,11 +574,30 @@ export interface components {
 		};
 		RecruiterMessage: components['schemas']['Message'] & {
 			entry: components['schemas']['MessageEntry'] | null;
+			audio?: components['schemas']['MessageAudio'] | null;
+		};
+		MessageAudio: {
+			duration_ms: number;
+			language: string;
+			/** @enum {string} */
+			status: 'available' | 'deleted' | 'not_stored';
 		};
 		Authenticity: {
 			/** @enum {string} */
 			level: 'none' | 'possible' | 'likely';
 			reasons: string[];
+			/** Format: date-time */
+			assessed_at: string;
+		};
+		Fluency: {
+			words_per_minute: number;
+			pause_ratio: number;
+			filler_rate: number;
+			transcript_confidence: number;
+			languages: string[];
+			summary: string;
+			spoken_answers: number;
+			typed_answers: number;
 			/** Format: date-time */
 			assessed_at: string;
 		};
@@ -576,6 +669,7 @@ export interface components {
 			messages: components['schemas']['RecruiterMessage'][];
 			scores: components['schemas']['Score'][];
 			authenticity: components['schemas']['Authenticity'] | null;
+			fluency?: components['schemas']['Fluency'] | null;
 		};
 		ApplyResponse: {
 			/** Format: uuid */
@@ -601,6 +695,15 @@ export interface components {
 			title: string;
 			total: number;
 		};
+		VoiceSession: {
+			/** @default 120 */
+			max_answer_seconds: number;
+			/** @default 1200 */
+			max_total_seconds: number;
+			/** @default 0 */
+			used_seconds: number;
+			recording_consent: boolean | null;
+		};
 		SessionDetail: {
 			status: components['schemas']['SessionStatus'];
 			job_title: string;
@@ -616,11 +719,30 @@ export interface components {
 			question_count: number;
 			max_questions: number;
 			current_topic: components['schemas']['CurrentTopic'] | null;
+			voice?: components['schemas']['VoiceSession'] | null;
 		};
-		SendMessageRequest: {
-			content: string;
-			entry?: components['schemas']['MessageEntry'];
+		StartSessionRequest: {
+			recording_consent?: boolean;
 		};
+		AudioUploadResponse: {
+			/** Format: uuid */
+			audio_id: string;
+			transcript: string;
+			language: string;
+			duration_ms: number;
+			stored: boolean;
+		};
+		/** @description Exactly one of `content` or `audio_id` is required. */
+		SendMessageRequest:
+			| {
+					content: string;
+					entry?: components['schemas']['MessageEntry'];
+			  }
+			| {
+					/** Format: uuid */
+					audio_id: string;
+					entry?: components['schemas']['MessageEntry'];
+			  };
 		SendMessageResponse: {
 			message: components['schemas']['Message'];
 			/** @enum {string} */
@@ -655,6 +777,7 @@ export interface components {
 				| 'scorer'
 				| 'evidence_check'
 				| 'authenticity'
+				| 'fluency'
 				| 'recruiter_gate';
 			/** @enum {string} */
 			type: 'splitter' | 'worker' | 'gate' | 'code' | 'human_gate';
@@ -732,6 +855,33 @@ export interface components {
 				'application/json': components['schemas']['Error'];
 			};
 		};
+		/** @description The recording was deleted by retention or was not stored. */
+		RecordingGone: {
+			headers: {
+				[name: string]: unknown;
+			};
+			content: {
+				'application/json': components['schemas']['Error'];
+			};
+		};
+		/** @description The recording contains no speech. */
+		NoSpeech: {
+			headers: {
+				[name: string]: unknown;
+			};
+			content: {
+				'application/json': components['schemas']['Error'];
+			};
+		};
+		/** @description The transcription service is unavailable; the client may re-send the same recording. */
+		TranscriptionUnavailable: {
+			headers: {
+				[name: string]: unknown;
+			};
+			content: {
+				'application/json': components['schemas']['Error'];
+			};
+		};
 		/** @description Too many requests. */
 		RateLimited: {
 			headers: {
@@ -749,6 +899,7 @@ export interface components {
 		Cursor: string;
 		JobId: string;
 		ApplicationId: string;
+		MessageId: string;
 		RunId: string;
 		SessionToken: string;
 	};
@@ -1126,6 +1277,34 @@ export interface operations {
 			404: components['responses']['NotFound'];
 		};
 	};
+	downloadApplicationMessageAudio: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				applicationId: components['parameters']['ApplicationId'];
+				messageId: components['parameters']['MessageId'];
+			};
+			cookie?: never;
+		};
+		requestBody?: never;
+		responses: {
+			/** @description Spoken answer recording in its uploaded format. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'audio/webm': string;
+					'audio/ogg': string;
+					'audio/mp4': string;
+				};
+			};
+			401: components['responses']['Unauthorized'];
+			404: components['responses']['NotFound'];
+			410: components['responses']['RecordingGone'];
+		};
+	};
 	decideApplication: {
 		parameters: {
 			query?: never;
@@ -1213,7 +1392,11 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: never;
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['StartSessionRequest'];
+			};
+		};
 		responses: {
 			/** @description Session started. */
 			200: {
@@ -1224,9 +1407,50 @@ export interface operations {
 					'application/json': components['schemas']['SessionDetail'];
 				};
 			};
+			400: components['responses']['ValidationFailed'];
 			404: components['responses']['SessionNotFound'];
 			409: components['responses']['Conflict'];
 			410: components['responses']['SessionGone'];
+		};
+	};
+	uploadSessionAudio: {
+		parameters: {
+			query?: never;
+			header?: never;
+			path: {
+				token: components['parameters']['SessionToken'];
+			};
+			cookie?: never;
+		};
+		requestBody: {
+			content: {
+				'multipart/form-data': {
+					/**
+					 * Format: binary
+					 * @description At most 1 MB; audio/webm, audio/ogg or audio/mp4.
+					 */
+					audio: string;
+				};
+			};
+		};
+		responses: {
+			/** @description Audio uploaded and transcribed. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AudioUploadResponse'];
+				};
+			};
+			400: components['responses']['ValidationFailed'];
+			404: components['responses']['SessionNotFound'];
+			409: components['responses']['Conflict'];
+			410: components['responses']['SessionGone'];
+			413: components['responses']['FileTooLarge'];
+			422: components['responses']['NoSpeech'];
+			429: components['responses']['RateLimited'];
+			502: components['responses']['TranscriptionUnavailable'];
 		};
 	};
 	listMessages: {

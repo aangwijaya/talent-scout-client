@@ -69,12 +69,16 @@ export const API_ERROR_CODES = [
 	'already_applied',
 	'session_already_started',
 	'invalid_state',
+	'audio_budget_exceeded',
 	'session_expired',
 	'session_completed',
+	'recording_deleted',
 	'file_too_large',
+	'no_speech',
 	'rate_limited',
 	'internal_error',
 	'llm_unavailable',
+	'transcription_unavailable',
 	'db_unavailable'
 ] as const satisfies readonly ApiErrorCode[];
 
