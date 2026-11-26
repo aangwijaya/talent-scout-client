@@ -10,6 +10,13 @@ const DESCRIPTION =
 	'Own the recruiter dashboard and ship accessible features with the team. '.repeat(2);
 
 type Editor = { lastCreate: { rubric: { label: string; weight: number }[] }; lastPatch: object };
+
+// The fields a server without the voice flag (server S-V2) accepts; it rejects any other with a
+// 400, so a body carrying more breaks create or edit there (client#97). `integration.int.ts`
+// checks the same against the pinned server.
+const JOB_FIELDS = ['description', 'rubric', 'status', 'title'];
+const expectOnlyJobFields = (body: object) =>
+	expect(Object.keys(body).filter((key) => !JOB_FIELDS.includes(key))).toEqual([]);
 type EditorState = { count?: number; applicants?: number; suggest_limited?: boolean };
 
 test.beforeEach(async ({ request }) => {
@@ -58,6 +65,7 @@ test('create a job with an edited AI suggestion, then see it listed and on its a
 	const jobId = new URL(page.url()).pathname.split('/').pop();
 	const { lastCreate } = await editorState(request);
 	expect(lastCreate.rubric[0]).toMatchObject({ label: 'Product thinking', weight: 3 });
+	expectOnlyJobFields(lastCreate);
 
 	await page.goto('/dashboard/jobs');
 	await expect(page.getByRole('link', { name: 'Platform Engineer', exact: true })).toBeVisible();
@@ -104,6 +112,7 @@ test('edit a job with applicants: the rubric is locked and the title change save
 	const { lastPatch } = await editorState(request);
 	expect(lastPatch).not.toHaveProperty('rubric');
 	expect(lastPatch).toMatchObject({ title: 'Seeded Engineer II' });
+	expectOnlyJobFields(lastPatch);
 });
 
 test('a used-up suggestion limit shows the wait and keeps the criteria', async ({
