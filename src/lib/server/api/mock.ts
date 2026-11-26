@@ -54,7 +54,8 @@ function sessionBase(): SessionInfo {
 		topic_count: null,
 		question_count: 0,
 		max_questions: 15,
-		current_topic: null
+		current_topic: null,
+		voice: null
 	};
 }
 
@@ -107,7 +108,11 @@ export const mockApi: TalentScoutApi = {
 		}
 		return { ...job, ...patch, updated_at: new Date().toISOString() };
 	},
-	suggestRubric: async () => ({ rubric: suggestedRubric }),
+	suggestRubric: async () => ({
+		rubric: suggestedRubric,
+		spoken_english_required: false,
+		spoken_english_reason: 'The role works in writing with a local team.'
+	}),
 	getPublicJob: async (jobId) => {
 		const job = publicJobs.find(({ id }) => id === jobId);
 		if (!job) throw notFound();
