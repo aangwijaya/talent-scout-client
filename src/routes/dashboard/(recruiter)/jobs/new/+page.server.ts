@@ -19,8 +19,7 @@ export const actions: Actions = {
 
 		let job: Job;
 		try {
-			// No voice toggle on the form until K-V1: send the contract's default (false).
-			job = await api.createJob({ ...values, spoken_english_required: false });
+			job = await api.createJob(values);
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 409) {
 				return invalid(409, values, { form: LIMIT_MESSAGE });
