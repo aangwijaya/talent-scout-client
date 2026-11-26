@@ -177,6 +177,67 @@ test('apply, screen, review, shortlist and watch the run against the real API', 
 	});
 });
 
+// The real server rejects unknown body fields with 400, so these steps fail when the BFF sends a
+// create or PATCH field the pinned server does not know (client#97). Rubric suggestion is left
+// out: nothing has shown yet that the server's fake LLM answers it.
+test('the recruiter creates a job, then edits its title and status', async ({ page }) => {
+	// Unique per run: jobs are never deleted, and `--repeat-each` runs share one database.
+	const runTag = `${Date.now()}-${test.info().repeatEachIndex}`;
+	const title = `Integration Engineer ${runTag}`;
+	const editedTitle = `Integration Lead ${runTag}`;
+	const rubric = [
+		['Svelte depth', 'Builds and debugs Svelte 5 apps with runes.'],
+		['Accessibility', 'Ships keyboard and screen reader friendly UI.'],
+		['Collaboration', 'Explains trade-offs clearly to the team.']
+	];
+	const listLink = (name: string) =>
+		page.getByRole('link', { name, exact: true }).filter({ visible: true });
+
+	const jobId = await test.step('create a job with a 3-criterion rubric', async () => {
+		await signIn(page);
+		await page.getByRole('link', { name: 'New job' }).click();
+		await expect(page.getByRole('heading', { name: 'New job', level: 1 })).toBeVisible();
+		await page.locator('#field-title').fill(title);
+		await page
+			.locator('#field-description')
+			.fill('Build the recruiter dashboard and keep it accessible, fast and well tested.');
+		for (const [i, [label, description]] of rubric.entries()) {
+			await page.locator(`#field-rubric-${i}-label`).fill(label);
+			await page.locator(`#field-rubric-${i}-description`).fill(description);
+		}
+		await page.getByRole('button', { name: 'Create job' }).click();
+
+		await expect(page).toHaveURL(/\/dashboard\/jobs\/[0-9a-f-]{36}\?saved=created$/);
+		await expect(page.getByRole('status').filter({ hasText: 'Job created' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible();
+		const id = new URL(page.url()).pathname.split('/').at(-1) ?? '';
+
+		await page.goto('/dashboard/jobs');
+		await expect(listLink(title)).toBeVisible();
+		return id;
+	});
+
+	await test.step('edit its title and status', async () => {
+		await page.goto(`/dashboard/jobs/${jobId}/edit`);
+		await expect(page.locator('#field-title')).toHaveValue(title);
+		await page.locator('#field-title').fill(editedTitle);
+		const closed = page.getByRole('radio', { name: 'Closed' });
+		await page.locator('label').filter({ has: closed }).click();
+		await expect(closed).toBeChecked();
+		await page.getByRole('button', { name: 'Save changes' }).click();
+
+		await expect(page).toHaveURL(`/dashboard/jobs/${jobId}?saved=updated`);
+		await expect(page.getByRole('status').filter({ hasText: 'Changes saved' })).toBeVisible();
+		await page.reload();
+		await expect(page.getByRole('heading', { name: editedTitle, level: 1 })).toBeVisible();
+		await expect(page.getByText(/applicants · Closed$/)).toBeVisible();
+
+		await page.goto('/dashboard/jobs');
+		await expect(listLink(editedTitle)).toBeVisible();
+		await expect(listLink(title)).toHaveCount(0);
+	});
+});
+
 test('the recruiter logs in and sees the seeded job', async ({ page, context }) => {
 	await page.goto('/dashboard/login');
 	await page.getByLabel('Password', { exact: true }).fill(recruiterLogin);
