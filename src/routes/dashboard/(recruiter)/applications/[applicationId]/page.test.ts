@@ -121,12 +121,12 @@ describe('review page, other states', () => {
 			invite: {
 				session_id: 's',
 				expires_at: '2026-11-18T06:00:00Z',
-				invite_url: 'https://talentscout.vercel.app/s/new-token'
+				invite_url: 'https://talentscout-id.vercel.app/s/new-token'
 			}
 		});
 		expect(body).toContain('Get invite link');
 		expect(body).toContain('New invite link');
-		expect(body).toContain('https://talentscout.vercel.app/s/new-token');
+		expect(body).toContain('https://talentscout-id.vercel.app/s/new-token');
 		expect(body).toContain('Expires Nov 18, 2026');
 		expect(body).not.toContain('Confirm shortlist');
 		expect(body).not.toMatch(/>\s*Shortlist\s*</);
@@ -157,13 +157,13 @@ describe('review page, other states', () => {
 			invite: {
 				session_id: 's',
 				expires_at: '2026-11-18T06:00:00Z',
-				invite_url: 'https://talentscout.vercel.app/s/retry-token'
+				invite_url: 'https://talentscout-id.vercel.app/s/retry-token'
 			}
 		});
 		expect(body).toMatch(/>\s*Invited\s*</);
 		expect(body).not.toMatch(/>\s*Failed\s*</);
 		expect(body).not.toContain('The screening could not finish');
-		expect(body).toContain('https://talentscout.vercel.app/s/retry-token');
+		expect(body).toContain('https://talentscout-id.vercel.app/s/retry-token');
 	});
 
 	it('in session: progress banner, transcript so far, no decision', () => {

@@ -45,7 +45,11 @@ export type DecisionRequest = Schemas['DecisionRequest'];
 export type ResendInviteResponse = Schemas['ResendInviteResponse'];
 export type SendMessageResponse = Schemas['SendMessageResponse'];
 export type RetryResponse = Schemas['RetryResponse'];
-export type JobCreateRequest = Schemas['JobCreateRequest'];
+// openapi-typescript makes a field with a default required, but the contract lets a client leave
+// `spoken_english_required` out (default false). Leaving it out also keeps job creation working
+// against a server without the voice fields yet: the API rejects unknown fields.
+export type JobCreateRequest = Omit<Schemas['JobCreateRequest'], 'spoken_english_required'> &
+	Partial<Pick<Schemas['JobCreateRequest'], 'spoken_english_required'>>;
 export type JobUpdateRequest = Schemas['JobUpdateRequest'];
 export type RubricSuggestionRequest = Schemas['RubricSuggestionRequest'];
 export type RubricSuggestionResponse = Schemas['RubricSuggestionResponse'];
@@ -69,12 +73,16 @@ export const API_ERROR_CODES = [
 	'already_applied',
 	'session_already_started',
 	'invalid_state',
+	'audio_budget_exceeded',
 	'session_expired',
 	'session_completed',
+	'recording_deleted',
 	'file_too_large',
+	'no_speech',
 	'rate_limited',
 	'internal_error',
 	'llm_unavailable',
+	'transcription_unavailable',
 	'db_unavailable'
 ] as const satisfies readonly ApiErrorCode[];
 

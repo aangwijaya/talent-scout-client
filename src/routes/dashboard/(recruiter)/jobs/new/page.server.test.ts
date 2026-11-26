@@ -60,6 +60,8 @@ describe('new job', () => {
 				weight: Number(weight)
 			}))
 		});
+		// The production API rejects unknown fields until it serves the voice ones (server S-V2).
+		expect(spy.mock.calls[0][0]).not.toHaveProperty('spoken_english_required');
 		expect(isRedirect(thrown) && thrown.status).toBe(303);
 		expect(isRedirect(thrown) && thrown.location).toMatch(
 			/^\/dashboard\/jobs\/[^/]+\?saved=created$/

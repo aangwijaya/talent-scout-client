@@ -18,7 +18,8 @@ export const NODE_POSITIONS: Record<NodeId, { x: number; y: number }> = {
 	scorer: { x: 568, y: 288 },
 	evidence_check: { x: 304, y: 288 },
 	authenticity: { x: 40, y: 288 },
-	recruiter_gate: { x: 40, y: 480 }
+	fluency: { x: 40, y: 480 },
+	recruiter_gate: { x: 304, y: 480 }
 };
 
 export const NODE_NAMES: Record<NodeId, string> = {
@@ -30,6 +31,7 @@ export const NODE_NAMES: Record<NodeId, string> = {
 	scorer: 'Scorer',
 	evidence_check: 'Evidence check',
 	authenticity: 'Authenticity',
+	fluency: 'Fluency',
 	recruiter_gate: 'Recruiter gate'
 };
 
@@ -61,7 +63,7 @@ export const shortModel = (model: string) => model.slice(model.lastIndexOf('/') 
 export type EdgeGeometry = { path: string; label: string; labelX: number; labelY: number };
 
 // Top row: y 96–160, thirds at 117/128/139. Bottom row: y 288–352, thirds at 309/320/331.
-// Third row: recruiter_gate alone at y 480–544, under authenticity.
+// Third row: y 480–544, fluency under authenticity, then recruiter_gate to its right.
 // Each label sits beside its line so the line and arrowhead stay visible: centred 18px above a
 // horizontal segment, 18px below the two lower-third return lines, and right of the verdict line.
 export const EDGE_GEOMETRY: Record<string, EdgeGeometry> = {
@@ -97,18 +99,30 @@ export const EDGE_GEOMETRY: Record<string, EdgeGeometry> = {
 		labelX: 272,
 		labelY: 302
 	},
-	// Runs recorded before server#81 go straight from evidence_check to recruiter_gate; route that
-	// edge under the authenticity node so old replays still draw it.
-	'evidence_check>recruiter_gate': {
-		path: 'M404,352 L404,512 L240,512',
-		label: 'scored',
-		labelX: 322,
-		labelY: 494
-	},
-	'authenticity>recruiter_gate': {
+	'authenticity>fluency': {
 		path: 'M140,352 L140,480',
 		label: 'scored',
-		labelX: 176,
+		labelX: 104,
+		labelY: 416
+	},
+	'fluency>recruiter_gate': {
+		path: 'M240,512 L304,512',
+		label: 'scored',
+		labelX: 272,
+		labelY: 494
+	},
+	// Older runs end the scoring path without fluency, and runs recorded before server#81 without
+	// authenticity too. Both edges stay so their replays still draw, and both go around the third row.
+	'authenticity>recruiter_gate': {
+		path: 'M200,352 L200,416 L380,416 L380,480',
+		label: 'scored',
+		labelX: 290,
+		labelY: 398
+	},
+	'evidence_check>recruiter_gate': {
+		path: 'M404,352 L404,480',
+		label: 'scored',
+		labelX: 440,
 		labelY: 416
 	}
 };

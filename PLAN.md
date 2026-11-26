@@ -34,7 +34,7 @@ Built by Claude. References: `CLAUDE.md`, `DESIGN.md`, `docs/*`; rules are in `C
 ## Day 5 — Vercel Deploy + README
 - [ ] Vercel env (private): `API_BASE_URL` = Railway URL, `USE_MOCK=false`, `BFF_SHARED_SECRET` (same value as Railway); check SSE CORS, cookie login & deep links
 - [ ] Client README (graph view screenshot, how to run mock & real)
-- **Done:** full flow works on `https://talentscout.vercel.app`
+- **Done:** full flow works on `https://talentscout-id.vercel.app`
 
 ## Day 6 — Polish & Bug Fixes
 - [ ] Loading/empty/error states, mobile applicant pages, basic accessibility (`DESIGN.md`)

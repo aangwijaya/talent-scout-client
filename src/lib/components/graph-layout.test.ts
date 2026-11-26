@@ -66,11 +66,13 @@ describe('edge labels', () => {
 	}
 });
 
-// server#81 added the advisory authenticity node between evidence_check and recruiter_gate.
+// server#81 added the advisory authenticity node, and server#99 the voice-only fluency node, between
+// evidence_check and recruiter_gate.
 describe('node layout', () => {
-	it('places all nine nodes, including authenticity, inside the canvas', () => {
+	it('places all ten nodes, including authenticity and fluency, inside the canvas', () => {
 		expect(NODE_IDS).toContain('authenticity');
-		expect(NODE_IDS).toHaveLength(9);
+		expect(NODE_IDS).toContain('fluency');
+		expect(NODE_IDS).toHaveLength(10);
 		for (const id of NODE_IDS) {
 			const pos = NODE_POSITIONS[id];
 			expect(pos, id).toBeDefined();
@@ -96,23 +98,36 @@ describe('node layout', () => {
 		}
 	});
 
-	it('routes evidence_check → authenticity → recruiter_gate', () => {
+	it('routes evidence_check → authenticity → fluency → recruiter_gate', () => {
 		expect(EDGE_GEOMETRY['evidence_check>authenticity']).toBeDefined();
-		expect(EDGE_GEOMETRY['authenticity>recruiter_gate']).toBeDefined();
+		expect(EDGE_GEOMETRY['authenticity>fluency']).toBeDefined();
+		expect(EDGE_GEOMETRY['fluency>recruiter_gate']).toBeDefined();
 	});
 
-	it('keeps the pre-server#81 evidence_check → recruiter_gate edge clear of the authenticity node', () => {
-		const legacy = EDGE_GEOMETRY['evidence_check>recruiter_gate'];
-		expect(legacy).toBeDefined();
-		const { x, y } = NODE_POSITIONS.authenticity;
-		for (const [px, py] of points(legacy.path)) {
-			const inside = px > x && px < x + NODE_WIDTH && py > y && py < y + NODE_HEIGHT;
-			expect(inside, `${px},${py}`).toBe(false);
-		}
-		const [, , end] = points(legacy.path);
-		expect(end).toEqual([
-			NODE_POSITIONS.recruiter_gate.x + NODE_WIDTH,
-			NODE_POSITIONS.recruiter_gate.y + 32
-		]);
-	});
+	// Replays of older runs: before server#81 (no authenticity) and before server#99 (no fluency).
+	for (const key of ['evidence_check>recruiter_gate', 'authenticity>recruiter_gate']) {
+		it(`keeps the older ${key} edge clear of every node and ends it on recruiter_gate`, () => {
+			const legacy = EDGE_GEOMETRY[key];
+			expect(legacy).toBeDefined();
+			const pts = points(legacy.path);
+			// Every segment, sampled every 4px, stays out of every node's box.
+			for (const [[ax, ay], [bx, by]] of pts.slice(1).map((p, i) => [pts[i], p])) {
+				const steps = Math.max(Math.abs(bx - ax), Math.abs(by - ay)) / 4;
+				for (let k = 1; k < steps; k++) {
+					const px = ax + ((bx - ax) * k) / steps;
+					const py = ay + ((by - ay) * k) / steps;
+					for (const id of NODE_IDS) {
+						const { x, y } = NODE_POSITIONS[id];
+						const inside = px > x && px < x + NODE_WIDTH && py > y && py < y + NODE_HEIGHT;
+						expect(inside, `${key} at ${px},${py} crosses ${id}`).toBe(false);
+					}
+				}
+			}
+			const [ex, ey] = pts[pts.length - 1];
+			const gate = NODE_POSITIONS.recruiter_gate;
+			expect(ey).toBe(gate.y);
+			expect(ex).toBeGreaterThan(gate.x);
+			expect(ex).toBeLessThan(gate.x + NODE_WIDTH);
+		});
+	}
 });
