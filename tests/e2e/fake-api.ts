@@ -41,6 +41,7 @@ type FakeJob = {
 	description: string;
 	rubric: Criterion[];
 	status: 'open' | 'closed';
+	spoken_english_required: boolean;
 	apply_url: string;
 	application_count: number;
 	created_at: string;
@@ -72,6 +73,7 @@ const SUGGESTION: Criterion[] = [
 const editor = {
 	jobs: [] as FakeJob[],
 	suggestLimited: false,
+	suggestSpoken: false,
 	lastCreate: null as unknown,
 	lastPatch: null as unknown
 };
@@ -84,6 +86,7 @@ function fakeJob(id: string, title: string, fields: Partial<FakeJob> = {}): Fake
 		description: `${title} builds the product with a small team. `.repeat(3),
 		rubric: SUGGESTION,
 		status: 'open',
+		spoken_english_required: false,
 		apply_url: `http://localhost/apply/${id}`,
 		application_count: 0,
 		created_at: now,
@@ -92,13 +95,19 @@ function fakeJob(id: string, title: string, fields: Partial<FakeJob> = {}): Fake
 	};
 }
 
-function resetEditor({ count = 1, applicants = 0, suggest_limited = false } = {}): void {
+function resetEditor({
+	count = 1,
+	applicants = 0,
+	suggest_limited = false,
+	suggest_spoken = false
+} = {}): void {
 	editor.jobs = Array.from({ length: count }, (_, i) =>
 		i === 0
 			? fakeJob(SEED_JOB_ID, 'Seeded Engineer', { application_count: applicants })
 			: fakeJob(crypto.randomUUID(), `Filler job ${i}`)
 	);
 	editor.suggestLimited = suggest_limited;
+	editor.suggestSpoken = suggest_spoken;
 	editor.lastCreate = null;
 	editor.lastPatch = null;
 }
@@ -428,15 +437,22 @@ createServer(async (req, res) => {
 			const error = { code: 'rate_limited', message: 'Suggestion limit reached' };
 			return json(res, 429, { error }, { 'retry-after': '125' });
 		}
-		return json(res, 200, { rubric: SUGGESTION });
+		// The reason carries markup so the editor test sees it rendered as text.
+		return json(res, 200, {
+			rubric: SUGGESTION,
+			spoken_english_required: editor.suggestSpoken,
+			spoken_english_reason: editor.suggestSpoken
+				? '<b>Daily calls</b> with customers in English.'
+				: 'The role is written work.'
+		});
 	}
 	const jobPath = path.match(/^\/api\/v1\/jobs\/([^/]+)(\/public|\/applications)?$/);
 	const job = editor.jobs.find(({ id }) => id === jobPath?.[1]);
 	if (jobPath && job) {
 		if (jobPath[2] === '/applications') return json(res, 200, { items: [], next_cursor: null });
 		if (jobPath[2] === '/public') {
-			const { id, title, description, status } = job;
-			return json(res, 200, { id, title, description, status });
+			const { id, title, description, status, spoken_english_required } = job;
+			return json(res, 200, { id, title, description, status, spoken_english_required });
 		}
 		if (req.method === 'PATCH') {
 			const patch = await readJson(req);

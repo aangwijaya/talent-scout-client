@@ -5,8 +5,11 @@ import {
 	fieldId,
 	keyFromLabel,
 	mapServerField,
+	parseJobForm,
 	patchBody,
 	retryAfterMinutes,
+	sessionsNote,
+	spokenHint,
 	tabFromKey,
 	validateJob,
 	type JobValues
@@ -23,6 +26,7 @@ const valid: JobValues = {
 	title: 'Frontend Engineer',
 	description: 'x'.repeat(50),
 	status: 'open',
+	spoken_english_required: false,
 	rubric: [criterion('one'), criterion('two', 2), criterion('three', 3)]
 };
 
@@ -105,6 +109,7 @@ describe('mapServerField', () => {
 		['description', 'description'],
 		['status', 'status'],
 		['rubric', 'rubric'],
+		['spoken_english_required', 'spoken_english_required'],
 		['rubric[1].key', 'rubric[1].key'],
 		['rubric[0].weight', 'rubric[0].weight']
 	])('maps details.field %s to %s', (field, key) => {
@@ -130,8 +135,16 @@ describe('patchBody', () => {
 		expect(body).toEqual({
 			title: valid.title,
 			description: valid.description,
-			status: valid.status
+			status: valid.status,
+			spoken_english_required: false
 		});
+	});
+
+	// The form sends every editable field, not only the changed ones, so the switch goes too.
+	it('sends the spoken English switch value', () => {
+		const on = { ...valid, spoken_english_required: true };
+		expect(patchBody(on, { rubricLocked: true }).spoken_english_required).toBe(true);
+		expect(patchBody(on, { rubricLocked: false }).spoken_english_required).toBe(true);
 	});
 
 	it('sends the rubric when the job has no applications', () => {
@@ -201,5 +214,53 @@ describe('tabFromKey', () => {
 		expect(tabFromKey('End', 'write', tabs)).toBe('preview');
 		expect(tabFromKey('Enter', 'write', tabs)).toBeNull();
 		expect(tabFromKey('Tab', 'write', tabs)).toBeNull();
+	});
+});
+
+describe('parseJobForm', () => {
+	it('reads the spoken English switch: a checked checkbox sends "on", an unchecked one nothing', () => {
+		const data = new FormData();
+		expect(parseJobForm(data).spoken_english_required).toBe(false);
+		data.set('spoken_english_required', 'on');
+		expect(parseJobForm(data).spoken_english_required).toBe(true);
+	});
+});
+
+describe('spokenHint', () => {
+	const suggestion = (required: boolean, reason = '') => ({
+		ok: true as const,
+		rubric: valid.rubric,
+		spoken_english_required: required,
+		spoken_english_reason: reason
+	});
+
+	it('gives the reason only when the AI suggests it and the switch is off', () => {
+		expect(spokenHint(suggestion(true, 'Customer calls in English'), false)).toBe(
+			'Customer calls in English'
+		);
+	});
+
+	it('gives nothing when the AI says false', () => {
+		expect(spokenHint(suggestion(false, 'Written role'), false)).toBeNull();
+	});
+
+	it('gives nothing once the switch is on', () => {
+		expect(spokenHint(suggestion(true, 'Customer calls'), true)).toBeNull();
+	});
+
+	it('gives nothing without a successful suggestion', () => {
+		expect(spokenHint(null, false)).toBeNull();
+		expect(spokenHint({ ok: false, status: 502, retry_after_seconds: null }, false)).toBeNull();
+	});
+});
+
+describe('sessionsNote', () => {
+	it('counts the interviews already sent, singular for one', () => {
+		expect(sessionsNote(1)).toBe(
+			'Changing this applies to invites sent after you save. The 1 interview already sent keeps its mode.'
+		);
+		expect(sessionsNote(3)).toBe(
+			'Changing this applies to invites sent after you save. The 3 interviews already sent keep their mode.'
+		);
 	});
 });

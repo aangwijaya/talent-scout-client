@@ -33,6 +33,32 @@ describe('POST rubric-suggestion', () => {
 		expect(body.rubric.length).toBeGreaterThanOrEqual(3);
 	});
 
+	it('passes on the spoken English suggestion and its reason', async () => {
+		vi.spyOn(mockApi, 'suggestRubric').mockResolvedValue({
+			rubric: [],
+			spoken_english_required: true,
+			spoken_english_reason: 'Daily calls with US customers'
+		});
+		const body = await (await call(input)).json();
+		expect(body).toMatchObject({
+			ok: true,
+			spoken_english_required: true,
+			spoken_english_reason: 'Daily calls with US customers'
+		});
+	});
+
+	it('reads a suggestion without the spoken English fields as false', async () => {
+		vi.spyOn(mockApi, 'suggestRubric').mockResolvedValue({ rubric: [] });
+		const body = await (await call(input)).json();
+		expect(body).toMatchObject({ spoken_english_required: false, spoken_english_reason: '' });
+	});
+
+	it('the mock suggests spoken English with a reason', async () => {
+		const suggestion = await mockApi.suggestRubric(input);
+		expect(suggestion.spoken_english_required).toBe(true);
+		expect(suggestion.spoken_english_reason).toBeTruthy();
+	});
+
 	it('returns 429 with the Retry-After seconds', async () => {
 		vi.spyOn(mockApi, 'suggestRubric').mockRejectedValue(
 			new ApiError(429, 'rate_limited', 'slow down', null, 125)

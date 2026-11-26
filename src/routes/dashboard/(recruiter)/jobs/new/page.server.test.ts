@@ -1,5 +1,6 @@
 import { isActionFailure, isRedirect, type ActionFailure } from '@sveltejs/kit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jobs } from '$lib/server/api/fixtures';
 import { mockApi } from '$lib/server/api/mock';
 import { ApiError, type Job } from '$lib/server/api/types';
 import { LIMIT_MESSAGE } from '$lib/components/job-form';
@@ -43,7 +44,7 @@ const submit = async (data: FormData) =>
 describe('new job', () => {
 	it('loads the job count for the 20-job cap', async () => {
 		const data = await Promise.resolve(load({} as never));
-		expect(data?.jobCount).toBe(1);
+		expect(data?.jobCount).toBe(jobs.length);
 	});
 
 	it('creates the job with the contract body and redirects to its applicants page', async () => {
@@ -58,14 +59,19 @@ describe('new job', () => {
 				label,
 				description,
 				weight: Number(weight)
-			}))
+			})),
+			spoken_english_required: false
 		});
-		// The production API rejects unknown fields until it serves the voice ones (server S-V2).
-		expect(spy.mock.calls[0][0]).not.toHaveProperty('spoken_english_required');
 		expect(isRedirect(thrown) && thrown.status).toBe(303);
 		expect(isRedirect(thrown) && thrown.location).toMatch(
 			/^\/dashboard\/jobs\/[^/]+\?saved=created$/
 		);
+	});
+
+	it('sends spoken_english_required: true when the switch is on', async () => {
+		const spy = vi.spyOn(mockApi, 'createJob');
+		await submit(form({ spoken_english_required: 'on' })).catch((e: unknown) => e);
+		expect(spy.mock.calls[0][0].spoken_english_required).toBe(true);
 	});
 
 	it('fails with field errors before calling the API when the form breaks the rules', async () => {
@@ -106,8 +112,10 @@ describe('new job', () => {
 		const job: Job = await mockApi.createJob({
 			title: 'Staff Engineer',
 			description: 'x'.repeat(60),
-			rubric: []
+			rubric: [],
+			spoken_english_required: true
 		});
 		expect(job.status).toBe('open');
+		expect(job.spoken_english_required).toBe(true);
 	});
 });

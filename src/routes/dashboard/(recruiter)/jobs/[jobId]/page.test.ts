@@ -64,6 +64,21 @@ function page(
 }
 
 describe('applicants page', () => {
+	it('shows the Spoken English badge in the header only when the job has it on', () => {
+		const header = (spoken: boolean) => {
+			const data = {
+				job: { ...job, spoken_english_required: spoken },
+				applications: [],
+				status: null,
+				statuses: STATUSES
+			};
+			const body = render(Page, { props: { data, params: { jobId: 'job-1' } } as never }).body;
+			return body.split('</h1>')[1].split('<button')[0];
+		};
+		expect(header(true)).toMatch(/bg-subtle[^"]*text-muted[^>]*>[\s\S]*lucide-mic[\s\S]*Spoken English/);
+		expect(header(false)).not.toContain('Spoken English');
+	});
+
 	it('links to the job editor and confirms a save from ?saved=', () => {
 		expect(page([])).toContain('href="/dashboard/jobs/job-1/edit"');
 		expect(page([])).not.toContain('Job created');
