@@ -505,8 +505,8 @@ export interface components {
 		};
 		RubricSuggestionResponse: {
 			rubric: components['schemas']['RubricCriterion'][];
-			spoken_english_required?: boolean;
-			spoken_english_reason?: string;
+			spoken_english_required: boolean;
+			spoken_english_reason: string;
 		};
 		PublicJob: {
 			/** Format: uuid */
@@ -719,7 +719,7 @@ export interface components {
 			question_count: number;
 			max_questions: number;
 			current_topic: components['schemas']['CurrentTopic'] | null;
-			voice?: components['schemas']['VoiceSession'] | null;
+			voice: components['schemas']['VoiceSession'] | null;
 		};
 		StartSessionRequest: {
 			recording_consent?: boolean;

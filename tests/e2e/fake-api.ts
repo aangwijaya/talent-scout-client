@@ -162,7 +162,8 @@ function entrySession(active: boolean) {
 		topic_count: active ? 2 : null,
 		question_count: active ? 1 : 0,
 		max_questions: 6,
-		current_topic: active ? { position: 1, total: 2, title: 'Shipping' } : null
+		current_topic: active ? { position: 1, total: 2, title: 'Shipping' } : null,
+		voice: null
 	};
 }
 

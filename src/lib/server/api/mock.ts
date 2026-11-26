@@ -54,7 +54,8 @@ function sessionBase(): SessionInfo {
 		topic_count: null,
 		question_count: 0,
 		max_questions: 15,
-		current_topic: null
+		current_topic: null,
+		voice: null
 	};
 }
 
