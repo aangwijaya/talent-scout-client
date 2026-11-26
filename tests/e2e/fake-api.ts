@@ -153,7 +153,8 @@ function entrySession(active: boolean) {
 		topic_count: active ? 2 : null,
 		question_count: active ? 1 : 0,
 		max_questions: 6,
-		current_topic: active ? { position: 1, total: 2, title: 'Shipping' } : null
+		current_topic: active ? { position: 1, total: 2, title: 'Shipping' } : null,
+		voice: null
 	};
 }
 
@@ -428,7 +429,11 @@ createServer(async (req, res) => {
 			const error = { code: 'rate_limited', message: 'Suggestion limit reached' };
 			return json(res, 429, { error }, { 'retry-after': '125' });
 		}
-		return json(res, 200, { rubric: SUGGESTION });
+		return json(res, 200, {
+			rubric: SUGGESTION,
+			spoken_english_required: false,
+			spoken_english_reason: 'The role works in writing with a local team.'
+		});
 	}
 	const jobPath = path.match(/^\/api\/v1\/jobs\/([^/]+)(\/public|\/applications)?$/);
 	const job = editor.jobs.find(({ id }) => id === jobPath?.[1]);
