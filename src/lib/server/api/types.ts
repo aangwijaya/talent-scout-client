@@ -45,11 +45,7 @@ export type DecisionRequest = Schemas['DecisionRequest'];
 export type ResendInviteResponse = Schemas['ResendInviteResponse'];
 export type SendMessageResponse = Schemas['SendMessageResponse'];
 export type RetryResponse = Schemas['RetryResponse'];
-// openapi-typescript makes a field with a default required, but the contract lets a client leave
-// `spoken_english_required` out (default false). Leaving it out also keeps job creation working
-// against a server without the voice fields yet: the API rejects unknown fields.
-export type JobCreateRequest = Omit<Schemas['JobCreateRequest'], 'spoken_english_required'> &
-	Partial<Pick<Schemas['JobCreateRequest'], 'spoken_english_required'>>;
+export type JobCreateRequest = Schemas['JobCreateRequest'];
 export type JobUpdateRequest = Schemas['JobUpdateRequest'];
 export type RubricSuggestionRequest = Schemas['RubricSuggestionRequest'];
 export type RubricSuggestionResponse = Schemas['RubricSuggestionResponse'];

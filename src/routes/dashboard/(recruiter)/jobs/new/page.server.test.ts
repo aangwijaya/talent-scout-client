@@ -58,10 +58,9 @@ describe('new job', () => {
 				label,
 				description,
 				weight: Number(weight)
-			}))
+			})),
+			spoken_english_required: false
 		});
-		// The production API rejects unknown fields until it serves the voice ones (server S-V2).
-		expect(spy.mock.calls[0][0]).not.toHaveProperty('spoken_english_required');
 		expect(isRedirect(thrown) && thrown.status).toBe(303);
 		expect(isRedirect(thrown) && thrown.location).toMatch(
 			/^\/dashboard\/jobs\/[^/]+\?saved=created$/
@@ -106,7 +105,8 @@ describe('new job', () => {
 		const job: Job = await mockApi.createJob({
 			title: 'Staff Engineer',
 			description: 'x'.repeat(60),
-			rubric: []
+			rubric: [],
+			spoken_english_required: false
 		});
 		expect(job.status).toBe('open');
 	});
