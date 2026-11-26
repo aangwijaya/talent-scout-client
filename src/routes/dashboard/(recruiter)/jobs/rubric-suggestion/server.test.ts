@@ -48,7 +48,11 @@ describe('POST rubric-suggestion', () => {
 	});
 
 	it('reads a suggestion without the spoken English fields as false', async () => {
-		vi.spyOn(mockApi, 'suggestRubric').mockResolvedValue({ rubric: [] });
+		// A server older than S-V2 (server#107) still answers without these fields, though the
+		// contract now requires them; cast so the test keeps covering that answer.
+		vi.spyOn(mockApi, 'suggestRubric').mockResolvedValue({ rubric: [] } as unknown as Awaited<
+			ReturnType<typeof mockApi.suggestRubric>
+		>);
 		const body = await (await call(input)).json();
 		expect(body).toMatchObject({ spoken_english_required: false, spoken_english_reason: '' });
 	});
