@@ -110,8 +110,8 @@ export const mockApi: TalentScoutApi = {
 	},
 	suggestRubric: async () => ({
 		rubric: suggestedRubric,
-		spoken_english_required: false,
-		spoken_english_reason: 'The role works in writing with a local team.'
+		spoken_english_required: true,
+		spoken_english_reason: 'The role works with an international team on daily calls.'
 	}),
 	getPublicJob: async (jobId) => {
 		const job = publicJobs.find(({ id }) => id === jobId);

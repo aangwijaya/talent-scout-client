@@ -4,6 +4,7 @@
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import FileText from '@lucide/svelte/icons/file-text';
 	import Info from '@lucide/svelte/icons/info';
+	import Mic from '@lucide/svelte/icons/mic';
 	import Button from '$lib/components/Button.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import InlineError from '$lib/components/InlineError.svelte';
@@ -22,6 +23,8 @@
 		cv: 'CV (PDF, max 2 MB)',
 		cvHint: 'Choose a PDF file',
 		closed: 'This job is no longer accepting applications.',
+		spoken:
+			"The interview is spoken, in English. You'll need a microphone, or you can answer in text.",
 		successHeading: 'Application received',
 		demoLead: 'This is a public demo:',
 		demoRest: 'anyone can read what you submit. Use a sample CV, not your real one.'
@@ -90,6 +93,11 @@
 			<h1 class="mt-2 text-heading-sm font-semibold text-ink sm:text-heading">
 				{data.job.title}
 			</h1>
+			{#if data.job.spoken_english_required}
+				<p class="mt-2 flex items-start gap-1.5 text-body-sm text-muted">
+					<Mic size={16} aria-hidden="true" class="mt-0.5 shrink-0" />{COPY.spoken}
+				</p>
+			{/if}
 		</div>
 	</header>
 

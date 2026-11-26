@@ -9,15 +9,23 @@ const SEED_JOB_ID = 'e2e00000-0000-4000-8000-000000000001';
 const DESCRIPTION =
 	'Own the recruiter dashboard and ship accessible features with the team. '.repeat(2);
 
-type Editor = { lastCreate: { rubric: { label: string; weight: number }[] }; lastPatch: object };
+type Editor = {
+	lastCreate: { rubric: { label: string; weight: number }[]; spoken_english_required?: boolean };
+	lastPatch: object;
+};
 
-// The fields a server without the voice flag (server S-V2) accepts; it rejects any other with a
-// 400, so a body carrying more breaks create or edit there (client#97). `integration.int.ts`
-// checks the same against the pinned server.
-const JOB_FIELDS = ['description', 'rubric', 'status', 'title'];
+// The fields the server accepts on create and PATCH; it rejects any other with a 400, so a body
+// carrying more breaks create or edit there (client#97). `integration.int.ts` checks the same
+// against the pinned server.
+const JOB_FIELDS = ['description', 'rubric', 'spoken_english_required', 'status', 'title'];
 const expectOnlyJobFields = (body: object) =>
 	expect(Object.keys(body).filter((key) => !JOB_FIELDS.includes(key))).toEqual([]);
-type EditorState = { count?: number; applicants?: number; suggest_limited?: boolean };
+type EditorState = {
+	count?: number;
+	applicants?: number;
+	suggest_limited?: boolean;
+	suggest_spoken?: boolean;
+};
 
 test.beforeEach(async ({ request }) => {
 	await request.get(`${FAKE_API}/__reset`);
@@ -65,6 +73,7 @@ test('create a job with an edited AI suggestion, then see it listed and on its a
 	const jobId = new URL(page.url()).pathname.split('/').pop();
 	const { lastCreate } = await editorState(request);
 	expect(lastCreate.rubric[0]).toMatchObject({ label: 'Product thinking', weight: 3 });
+	expect(lastCreate.spoken_english_required).toBe(false);
 	expectOnlyJobFields(lastCreate);
 
 	await page.goto('/dashboard/jobs');
@@ -72,6 +81,74 @@ test('create a job with an edited AI suggestion, then see it listed and on its a
 	await expect(page.getByText('2 of 20 jobs')).toBeVisible();
 	await page.goto(`/apply/${jobId}`);
 	await expect(page.getByRole('heading', { name: 'Platform Engineer' })).toBeVisible();
+});
+
+test('the AI hint turns on spoken English, and the job and apply pages say so', async ({
+	page,
+	request
+}) => {
+	await setup(page, request, { count: 1, suggest_spoken: true });
+	await newJob(page);
+	const spoken = page.getByRole('switch', { name: 'Spoken English interview' });
+	await expect(spoken).not.toBeChecked();
+
+	await page.getByRole('button', { name: 'Suggest with AI' }).click();
+	const hint = page.getByText('AI suggests turning this on.');
+	await expect(hint).toBeVisible();
+	await expect(page.getByText('<b>Daily calls</b> with customers in English.')).toBeVisible();
+	await expect(spoken).not.toBeChecked();
+
+	await page.getByRole('button', { name: 'Turn on' }).click();
+	await expect(spoken).toBeChecked();
+	await expect(hint).toHaveCount(0);
+	await expect(page.getByText('Up to 2 minutes per answer')).toBeVisible();
+
+	// Keyboard: Space toggles the focused switch, and it shows the focus ring.
+	await spoken.focus();
+	await page.keyboard.press('Space');
+	await expect(spoken).not.toBeChecked();
+	await expect(hint).toHaveCount(0);
+	await page.keyboard.press('Space');
+	await expect(spoken).toBeChecked();
+
+	await page.getByRole('button', { name: 'Create job' }).click();
+	await expect(page).toHaveURL(/\/dashboard\/jobs\/[^/]+\?saved=created$/);
+	const { lastCreate } = await editorState(request);
+	expect(lastCreate.spoken_english_required).toBe(true);
+	expectOnlyJobFields(lastCreate);
+	await expect(page.getByText('Spoken English', { exact: true })).toBeVisible();
+
+	const jobId = new URL(page.url()).pathname.split('/').pop();
+	await page.goto(`/apply/${jobId}`);
+	await expect(page.getByText('The interview is spoken, in English.')).toBeVisible();
+});
+
+test('turning the switch on by hand hides the AI hint', async ({ page, request }) => {
+	await setup(page, request, { count: 1, suggest_spoken: true });
+	await newJob(page);
+	await page.getByRole('button', { name: 'Suggest with AI' }).click();
+	await expect(page.getByText('AI suggests turning this on.')).toBeVisible();
+	await page.getByRole('switch', { name: 'Spoken English interview' }).check();
+	await expect(page.getByText('AI suggests turning this on.')).toHaveCount(0);
+});
+
+test('editing a job with applicants sends the switch and notes the sent interviews', async ({
+	page,
+	request
+}) => {
+	await setup(page, request, { count: 1, applicants: 1 });
+	await page.goto(`/dashboard/jobs/${SEED_JOB_ID}/edit`);
+	await expect(
+		page.getByText(
+			'Changing this applies to invites sent after you save. The 1 interview already sent keeps its mode.'
+		)
+	).toBeVisible();
+	await page.getByRole('switch', { name: 'Spoken English interview' }).check();
+	await page.getByRole('button', { name: 'Save changes' }).click();
+	await expect(page).toHaveURL(`/dashboard/jobs/${SEED_JOB_ID}?saved=updated`);
+	const { lastPatch } = await editorState(request);
+	expect(lastPatch).toMatchObject({ spoken_english_required: true });
+	expectOnlyJobFields(lastPatch);
 });
 
 test('the Write and Preview tabs move with the arrow keys', async ({ page, request }) => {

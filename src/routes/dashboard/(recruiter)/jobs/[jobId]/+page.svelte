@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Mic from '@lucide/svelte/icons/mic';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Search from '@lucide/svelte/icons/search';
 	import Users from '@lucide/svelte/icons/users';
@@ -41,7 +42,8 @@
 		loading: 'Loading applicants',
 		rubric: 'Rubric',
 		weight: 'weight',
-		editJob: 'Edit job'
+		editJob: 'Edit job',
+		spokenEnglish: 'Spoken English'
 	};
 	const SAVED = { created: 'Job created', updated: 'Changes saved' } as const;
 	const saved = $derived.by(() => {
@@ -114,10 +116,19 @@
 		<h1 class="text-heading-sm font-semibold [overflow-wrap:anywhere] text-ink">
 			{data.job.title}
 		</h1>
-		<p class="mt-1 text-body-sm text-muted">
-			<span class="font-mono">{count}</span>
-			{count === 1 ? 'applicant' : 'applicants'} · {jobStatus[data.job.status]}
-		</p>
+		<div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+			<p class="text-body-sm text-muted">
+				<span class="font-mono">{count}</span>
+				{count === 1 ? 'applicant' : 'applicants'} · {jobStatus[data.job.status]}
+			</p>
+			{#if data.job.spoken_english_required}
+				<span
+					class="inline-flex items-center gap-1 rounded-full bg-subtle px-2.5 py-0.5 text-caption font-medium text-muted"
+				>
+					<Mic size={12} aria-hidden="true" />{COPY.spokenEnglish}
+				</span>
+			{/if}
+		</div>
 	</div>
 	<div class="flex shrink-0 flex-col gap-2 sm:flex-row">
 		<Button

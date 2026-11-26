@@ -56,7 +56,8 @@ describe('edit job', () => {
 		expect(spy).toHaveBeenCalledWith(job.id, {
 			title: 'Renamed job',
 			description: job.description,
-			status: 'closed'
+			status: 'closed',
+			spoken_english_required: false
 		});
 		expect(isRedirect(thrown) && thrown.location).toBe(`/dashboard/jobs/${job.id}?saved=updated`);
 	});

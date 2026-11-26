@@ -22,12 +22,13 @@ const KEY_PATTERN = /^[a-z][a-z0-9_]{1,39}$/;
 const KEY_MAX = 40;
 const CRITERION_FIELDS = ['key', 'label', 'description', 'weight'] as const;
 const CRITERION_FIELD = /^rubric\[(\d+)\]\.(key|label|description|weight)$/;
-const JOB_FIELDS = ['title', 'description', 'status', 'rubric'] as const;
+const JOB_FIELDS = ['title', 'description', 'status', 'spoken_english_required', 'rubric'] as const;
 
 export type JobValues = {
 	title: string;
 	description: string;
 	status: JobStatus;
+	spoken_english_required: boolean;
 	rubric: RubricCriterion[];
 };
 
@@ -112,8 +113,8 @@ export function patchBody(
 	values: JobValues,
 	{ rubricLocked }: { rubricLocked: boolean }
 ): JobUpdateRequest {
-	const { title, description, status, rubric } = values;
-	return rubricLocked ? { title, description, status } : { title, description, status, rubric };
+	const { rubric, ...rest } = values;
+	return rubricLocked ? rest : { ...rest, rubric };
 }
 
 /** Reads the fields named by their contract paths (`rubric[0].key`, …), in index order. */
@@ -139,14 +140,34 @@ export function parseJobForm(form: FormData): JobValues {
 		title: text('title'),
 		description: text('description'),
 		status: text('status') === 'closed' ? 'closed' : 'open',
+		// A checked checkbox sends "on"; an unchecked one sends nothing.
+		spoken_english_required: form.has('spoken_english_required'),
 		rubric
 	};
 }
 
 /** What the BFF suggest endpoint answers. */
 export type SuggestResult =
-	| { ok: true; rubric: RubricCriterion[] }
+	| {
+			ok: true;
+			rubric: RubricCriterion[];
+			spoken_english_required: boolean;
+			spoken_english_reason: string;
+	  }
 	| { ok: false; status: number; retry_after_seconds: number | null };
+
+/** The AI's reason to turn spoken English on, or null when there is nothing to suggest. */
+export function spokenHint(result: SuggestResult | null, switchOn: boolean): string | null {
+	if (!result?.ok || !result.spoken_english_required || switchOn) return null;
+	return result.spoken_english_reason;
+}
+
+export const sessionsNote = (n: number) =>
+	`Changing this applies to invites sent after you save. ${
+		n === 1
+			? 'The 1 interview already sent keeps its mode.'
+			: `The ${n} interviews already sent keep their mode.`
+	}`;
 
 export type SuggestError =
 	| { kind: 'rate_limited'; minutes: number | null }
