@@ -24,6 +24,7 @@
 		keyFromLabel,
 		sessionsNote,
 		spokenHint,
+		suggestionToKeep,
 		tabFromKey,
 		validateJob,
 		type FieldErrors,
@@ -199,7 +200,7 @@
 			const outcome = applySuggestion(rubric(), result);
 			suggestError = outcome.error;
 			if (result.ok) {
-				lastSuggestion = result;
+				lastSuggestion = suggestionToKeep(result, spoken);
 				rows = outcome.rubric.map((c) => toRow(c));
 				suggested = true;
 				errors = {};

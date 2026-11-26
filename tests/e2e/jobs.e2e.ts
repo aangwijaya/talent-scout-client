@@ -132,6 +132,21 @@ test('turning the switch on by hand hides the AI hint', async ({ page, request }
 	await expect(page.getByText('AI suggests turning this on.')).toHaveCount(0);
 });
 
+test('a suggestion made while the switch is on leaves no hint for later', async ({
+	page,
+	request
+}) => {
+	await setup(page, request, { count: 1, suggest_spoken: true });
+	await newJob(page);
+	const spoken = page.getByRole('switch', { name: 'Spoken English interview' });
+	await spoken.check();
+	await page.getByRole('button', { name: 'Suggest with AI' }).click();
+	await expect(page.getByText('Suggested by AI from your description.')).toBeVisible();
+	await spoken.uncheck();
+	await expect(spoken).not.toBeChecked();
+	await expect(page.getByText('AI suggests turning this on.')).toHaveCount(0);
+});
+
 test('editing a job with applicants sends the switch and notes the sent interviews', async ({
 	page,
 	request

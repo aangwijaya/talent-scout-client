@@ -133,6 +133,7 @@ export const mockApi: TalentScoutApi = {
 		if (!jobs.some(({ id }) => id === jobId)) throw notFound();
 		const items = applications
 			.map((detail) => detail.application)
+			.filter(({ job_id }) => job_id === jobId)
 			.filter(({ status }) => !query?.status || status === query.status);
 		return { items, next_cursor: null };
 	},
