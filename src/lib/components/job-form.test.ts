@@ -10,6 +10,7 @@ import {
 	retryAfterMinutes,
 	sessionsNote,
 	spokenHint,
+	suggestionToKeep,
 	tabFromKey,
 	validateJob,
 	type JobValues
@@ -252,6 +253,14 @@ describe('spokenHint', () => {
 
 	it('gives nothing once the switch is on', () => {
 		expect(spokenHint(suggestion(true, 'Customer calls'), true)).toBeNull();
+	});
+
+	it('keeps no hint from a suggestion that arrived while the switch was on', () => {
+		// The recruiter had already turned it on, so turning it off later must not bring a hint back.
+		const kept = suggestionToKeep(suggestion(true, 'Customer calls'), true);
+		expect(spokenHint(kept, false)).toBeNull();
+		const keptWhileOff = suggestionToKeep(suggestion(true, 'Customer calls'), false);
+		expect(spokenHint(keptWhileOff, false)).toBe('Customer calls');
 	});
 
 	it('gives nothing without a successful suggestion', () => {

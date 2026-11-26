@@ -5,6 +5,7 @@ import {
 	MOCK_CLOSED_JOB_ID,
 	MOCK_JOB_ID,
 	MOCK_PASSWORD,
+	MOCK_SPOKEN_JOB_ID,
 	MOCK_TOKENS
 } from './fixtures';
 import { mockApi } from './mock';
@@ -39,6 +40,14 @@ describe('mockApi', () => {
 		const { items } = await mockApi.listApplications(MOCK_JOB_ID, { status: 'review' });
 		expect(items.length).toBeGreaterThan(0);
 		expect(items.every(({ status }) => status === 'review')).toBe(true);
+	});
+
+	it("lists only the job's own applicants", async () => {
+		const { items } = await mockApi.listApplications(MOCK_JOB_ID);
+		expect(items.length).toBeGreaterThan(0);
+		expect(items.every(({ job_id }) => job_id === MOCK_JOB_ID)).toBe(true);
+		const spoken = await mockApi.listApplications(MOCK_SPOKEN_JOB_ID);
+		expect(spoken.items).toEqual([]);
 	});
 
 	it('maps session tokens to the contract states', async () => {

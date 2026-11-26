@@ -162,6 +162,14 @@ export function spokenHint(result: SuggestResult | null, switchOn: boolean): str
 	return result.spoken_english_reason;
 }
 
+/**
+ * The suggestion to remember for the hint. One that arrives while the switch is already on has
+ * nothing to suggest, and must not bring the hint back if the recruiter turns the switch off later.
+ */
+export function suggestionToKeep(result: SuggestResult, switchOn: boolean): SuggestResult | null {
+	return switchOn ? null : result;
+}
+
 export const sessionsNote = (n: number) =>
 	`Changing this applies to invites sent after you save. ${
 		n === 1
