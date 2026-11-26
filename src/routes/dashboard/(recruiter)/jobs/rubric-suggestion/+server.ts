@@ -18,8 +18,13 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	try {
-		const { rubric } = await api.suggestRubric({ title, description });
-		return answer({ ok: true, rubric });
+		const suggestion = await api.suggestRubric({ title, description });
+		return answer({
+			ok: true,
+			rubric: suggestion.rubric,
+			spoken_english_required: suggestion.spoken_english_required ?? false,
+			spoken_english_reason: suggestion.spoken_english_reason ?? ''
+		});
 	} catch (err) {
 		// A token the API rejects makes the API layer clear the cookie and redirect to login; the
 		// editor's fetch would follow that to HTML, so say "session ended" in JSON instead.

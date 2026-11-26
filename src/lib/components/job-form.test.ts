@@ -157,7 +157,13 @@ describe('applySuggestion', () => {
 
 	it('replaces the criteria on success', () => {
 		const rubric = [criterion('a_key'), criterion('b_key'), criterion('c_key')];
-		expect(applySuggestion(current, { ok: true, rubric })).toEqual({ rubric, error: null });
+		const result = {
+			ok: true as const,
+			rubric,
+			spoken_english_required: false,
+			spoken_english_reason: ''
+		};
+		expect(applySuggestion(current, result)).toEqual({ rubric, error: null });
 	});
 
 	it('keeps the criteria on 401 and reports the ended session', () => {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
+	import Clock from '@lucide/svelte/icons/clock';
 	import Info from '@lucide/svelte/icons/info';
 	import Lock from '@lucide/svelte/icons/lock';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -12,6 +13,7 @@
 	import Markdown from '$lib/markdown/Markdown.svelte';
 	import type { JobStatus, RubricCriterion } from '$lib/server/api/types';
 	import Button from './Button.svelte';
+	import SpokenEnglishHint from './SpokenEnglishHint.svelte';
 	import {
 		DESCRIPTION_MAX,
 		RUBRIC_MAX,
@@ -20,6 +22,8 @@
 		charCount,
 		fieldId,
 		keyFromLabel,
+		sessionsNote,
+		spokenHint,
 		tabFromKey,
 		validateJob,
 		type FieldErrors,
@@ -58,6 +62,11 @@
 		shownOnApply: 'Shown on the public apply page.',
 		status: 'Status',
 		statusHint: 'Closed jobs stay listed. New applications are refused; running interviews finish.',
+		spoken: 'Spoken English interview',
+		spokenDescription:
+			'Applicants answer by voice in English. We transcribe each answer and note fluency for you to review; it never changes the score.',
+		spokenLimits:
+			'Up to 2 minutes per answer, 20 minutes per interview. Applicants can still answer in text.',
 		rubric: 'Rubric',
 		rubricHint:
 			'3 to 6 criteria. The interviewer plans topics from them and the scorer rates each one.',
@@ -98,6 +107,7 @@
 	let title = $state(start.title);
 	let description = $state(start.description);
 	let status = $state<JobStatus>(start.status);
+	let spoken = $state(start.spoken_english_required);
 	let rows = $state<Row[]>(
 		start.rubric.length > 0
 			? start.rubric.map((c) => toRow(c))
@@ -109,10 +119,30 @@
 	let suggesting = $state(false);
 	let suggested = $state(false);
 	let suggestError = $state<SuggestError | null>(null);
+	let lastSuggestion = $state<SuggestResult | null>(null);
+	const aiReason = $derived(spokenHint(lastSuggestion, spoken));
 
 	const rubric = (): RubricCriterion[] =>
 		rows.map(({ key, label, description, weight }) => ({ key, label, description, weight }));
-	const values = (): JobValues => ({ title, description, status, rubric: rubric() });
+	const values = (): JobValues => ({
+		title,
+		description,
+		status,
+		spoken_english_required: spoken,
+		rubric: rubric()
+	});
+
+	// Once the switch is on the hint has done its job, and turning it off again doesn't bring it back.
+	function onSpokenChange(checked: boolean) {
+		if (checked) lastSuggestion = null;
+	}
+
+	function turnOnSpoken() {
+		spoken = true;
+		lastSuggestion = null;
+		// The hint and its button go away, so keep focus on the control that changed.
+		document.getElementById(fieldId('spoken_english_required'))?.focus();
+	}
 	const descriptionLength = $derived(charCount(description));
 	const hasCriteria = $derived(rows.some((r) => r.label || r.key || r.description));
 	const rowError = (i: number) =>
@@ -169,6 +199,7 @@
 			const outcome = applySuggestion(rubric(), result);
 			suggestError = outcome.error;
 			if (result.ok) {
+				lastSuggestion = result;
 				rows = outcome.rubric.map((c) => toRow(c));
 				suggested = true;
 				errors = {};
@@ -343,6 +374,69 @@
 			<p class="mt-1.5 text-caption text-helper">{COPY.statusHint}</p>
 			{@render fieldError('status')}
 		</fieldset>
+
+		<div class="mt-5 border-t border-line pt-3.5">
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<label for={fieldId('spoken_english_required')} class="font-medium text-body"
+						>{COPY.spoken}</label
+					>
+					<p id="spoken-description" class="mt-0.5 text-body-sm text-muted">
+						{COPY.spokenDescription}
+					</p>
+				</div>
+				<label
+					for={fieldId('spoken_english_required')}
+					class="group relative flex shrink-0 items-center justify-center touch:size-11"
+				>
+					<input
+						type="checkbox"
+						role="switch"
+						id={fieldId('spoken_english_required')}
+						name="spoken_english_required"
+						bind:checked={spoken}
+						onchange={(e) => onSpokenChange(e.currentTarget.checked)}
+						aria-invalid={errors.spoken_english_required ? true : undefined}
+						aria-describedby={[
+							'spoken-description',
+							spoken && 'spoken-limits',
+							mode === 'edit' && applicantCount > 0 && 'spoken-sessions',
+							describedBy('spoken_english_required')
+						]
+							.filter(Boolean)
+							.join(' ')}
+						class="absolute inset-0 z-10 m-0 size-full cursor-pointer appearance-none opacity-0"
+					/>
+					<span
+						aria-hidden="true"
+						class="relative h-[22px] w-10 rounded-full bg-helper transition-colors group-has-checked:bg-brand group-has-focus-visible:ring-2 group-has-focus-visible:ring-focus group-has-focus-visible:ring-offset-2"
+					>
+						<span
+							class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-card shadow-card transition-transform group-has-checked:translate-x-[18px] motion-reduce:transition-none"
+						></span>
+					</span>
+				</label>
+			</div>
+			{#if spoken}
+				<p id="spoken-limits" class="mt-2 flex items-start gap-1.5 text-caption text-helper">
+					<Info size={14} aria-hidden="true" class="mt-px shrink-0" />{COPY.spokenLimits}
+				</p>
+			{/if}
+			{#if mode === 'edit' && applicantCount > 0}
+				<p
+					id="spoken-sessions"
+					class="mt-2 flex items-start gap-1.5 text-body-sm text-warning-text"
+				>
+					<Clock size={14} aria-hidden="true" class="mt-0.5 shrink-0" />{sessionsNote(
+						applicantCount
+					)}
+				</p>
+			{/if}
+			{#if aiReason !== null}
+				<SpokenEnglishHint reason={aiReason} onTurnOn={turnOnSpoken} />
+			{/if}
+			{@render fieldError('spoken_english_required')}
+		</div>
 	</section>
 
 	<section

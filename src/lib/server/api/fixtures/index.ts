@@ -31,6 +31,8 @@ const LATER = '2026-11-11T06:00:00Z';
 
 export const MOCK_JOB_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
 export const MOCK_CLOSED_JOB_ID = '5ab27c91-6e34-4d18-a2f0-9d1c3e5b7a60';
+/** The one mock job with a spoken English interview. */
+export const MOCK_SPOKEN_JOB_ID = '8d0f5b2e-3c41-4a7e-9b6d-2e7f1a4c9d35';
 
 export const MOCK_PASSWORD = 'mock-password';
 export const MOCK_ACCESS_TOKEN = 'mock-access-token';
@@ -98,6 +100,8 @@ export const suggestedRubric: RubricCriterion[] = [
 
 const jobDescription =
 	'Build the recruiter dashboard and applicant chat in SvelteKit, and own frontend quality with the team.';
+const spokenJobDescription =
+	'Lead onboarding calls with customers across time zones, in English, and turn their feedback into product requests.';
 
 export const jobs: Job[] = [
 	{
@@ -111,6 +115,18 @@ export const jobs: Job[] = [
 		application_count: 6,
 		created_at: CREATED_AT,
 		updated_at: CREATED_AT
+	},
+	{
+		id: MOCK_SPOKEN_JOB_ID,
+		title: 'Customer Success Lead',
+		description: spokenJobDescription,
+		rubric,
+		status: 'open',
+		spoken_english_required: true,
+		apply_url: `https://talentscout-id.vercel.app/apply/${MOCK_SPOKEN_JOB_ID}`,
+		application_count: 0,
+		created_at: CREATED_AT,
+		updated_at: CREATED_AT
 	}
 ];
 
@@ -121,6 +137,13 @@ export const publicJobs: PublicJob[] = [
 		description: jobDescription,
 		status: 'open',
 		spoken_english_required: false
+	},
+	{
+		id: MOCK_SPOKEN_JOB_ID,
+		title: 'Customer Success Lead',
+		description: spokenJobDescription,
+		status: 'open',
+		spoken_english_required: true
 	},
 	{
 		id: MOCK_CLOSED_JOB_ID,

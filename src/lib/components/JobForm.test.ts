@@ -37,6 +37,14 @@ describe('JobForm spoken English switch', () => {
 		expect(html).not.toContain(CAPTION);
 	});
 
+	it('has a 44px target under a finger and a visible focus ring', () => {
+		const html = body({ initial: values(false) });
+		const control = html.match(/<label[^>]*touch:size-11[^>]*>([\s\S]*?)<\/label>/)?.[1] ?? '';
+		expect(switchTag(control)).toContain('size-full');
+		expect(control).toContain('group-has-focus-visible:ring-2');
+		expect(control).toContain('group-has-focus-visible:ring-focus');
+	});
+
 	it('starts on, with the limits caption, when the job has it on', () => {
 		const html = body({ initial: values(true) });
 		expect(switchTag(html)).toMatch(/\schecked/);

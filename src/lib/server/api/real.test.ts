@@ -64,7 +64,12 @@ describe('realApi', () => {
 	it('creates, edits and suggests with the contract methods and paths', async () => {
 		event.fetch.mockImplementation(async () => json(200, {}));
 		const rubric = [{ key: 'k1', label: 'L1', description: 'description', weight: 1 }];
-		await realApi.createJob({ title: 't', description: 'd', rubric, spoken_english_required: false });
+		await realApi.createJob({
+			title: 't',
+			description: 'd',
+			rubric,
+			spoken_english_required: false
+		});
 		await realApi.updateJob('a/b', { title: 't', spoken_english_required: true });
 		await realApi.suggestRubric({ title: 't', description: 'd' });
 		const calls = event.fetch.mock.calls.map(([url, init]) => [url, init?.method, init?.body]);

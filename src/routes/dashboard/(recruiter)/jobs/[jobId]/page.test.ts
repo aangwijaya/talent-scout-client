@@ -75,7 +75,9 @@ describe('applicants page', () => {
 			const body = render(Page, { props: { data, params: { jobId: 'job-1' } } as never }).body;
 			return body.split('</h1>')[1].split('<button')[0];
 		};
-		expect(header(true)).toMatch(/bg-subtle[^"]*text-muted[^>]*>[\s\S]*lucide-mic[\s\S]*Spoken English/);
+		expect(header(true)).toMatch(
+			/bg-subtle[^"]*text-muted[^>]*>[\s\S]*lucide-mic[\s\S]*Spoken English/
+		);
 		expect(header(false)).not.toContain('Spoken English');
 	});
 

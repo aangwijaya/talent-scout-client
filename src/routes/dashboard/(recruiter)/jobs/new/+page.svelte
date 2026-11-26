@@ -9,7 +9,13 @@
 
 	const jobsHref = resolve('/dashboard/(recruiter)/jobs');
 	const atLimit = $derived(data.jobCount >= JOB_LIMIT);
-	const blank = { title: '', description: '', status: 'open' as const, rubric: [] };
+	const blank = {
+		title: '',
+		description: '',
+		status: 'open' as const,
+		spoken_english_required: false,
+		rubric: []
+	};
 </script>
 
 <svelte:head><title>New job · Talent Scout</title></svelte:head>

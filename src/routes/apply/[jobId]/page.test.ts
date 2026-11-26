@@ -6,7 +6,8 @@ vi.mock('$app/forms', () => ({ enhance: () => ({}) }));
 
 const { default: Page } = await import('./+page.svelte');
 
-const LINE = "The interview is spoken, in English. You'll need a microphone, or you can answer in text.";
+const LINE =
+	"The interview is spoken, in English. You'll need a microphone, or you can answer in text.";
 
 const page = (spoken: boolean) => {
 	const job: PublicJob = {
