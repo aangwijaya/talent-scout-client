@@ -135,4 +135,27 @@ describe('mockApi', () => {
 		expect(cv.headers.get('Content-Type')).toBe('application/pdf');
 		expect(mockApi.sseBaseUrl()).toBeNull();
 	});
+
+	it('runs a voice session: consent on start, a fake transcript sent as the answer', async () => {
+		const invited = await mockApi.getSession(MOCK_TOKENS.voiceInvited);
+		expect(invited.voice).toMatchObject({ recording_consent: null, max_answer_seconds: 120 });
+		expect((await mockApi.getSession(MOCK_TOKENS.invited)).voice).toBeNull();
+		const started = await mockApi.startSession(MOCK_TOKENS.voiceInvited, false);
+		expect(started.voice?.recording_consent).toBe(false);
+		const audio = new FormData();
+		audio.set('audio', new File([new Uint8Array(4)], 'answer.webm', { type: 'audio/webm' }));
+		const upload = await mockApi.uploadAudio(MOCK_TOKENS.voiceActive, audio);
+		expect(upload.transcript.length).toBeGreaterThan(0);
+		const { message } = await mockApi.sendMessage(MOCK_TOKENS.voiceActive, {
+			audio_id: upload.audio_id
+		});
+		expect(message.content).toBe(upload.transcript);
+	});
+
+	it('refuses an upload for a text session', async () => {
+		await expect(mockApi.uploadAudio(MOCK_TOKENS.active, new FormData())).rejects.toMatchObject({
+			status: 409,
+			code: 'invalid_state'
+		});
+	});
 });
