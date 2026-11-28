@@ -265,7 +265,7 @@ const ENTRIES: Record<string, MessageEntry> = {
 };
 
 const withEntry = (messages: typeof mockMessages) =>
-	messages.map((message) => ({ ...message, entry: ENTRIES[message.id] ?? null }));
+	messages.map((message) => ({ ...message, entry: ENTRIES[message.id] ?? null, audio: null }));
 
 /** What the authenticity node of the matching replay reports (`level=` in its output_summary). */
 const likelyAuthenticity: Authenticity = {
