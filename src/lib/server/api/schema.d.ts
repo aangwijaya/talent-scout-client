@@ -574,7 +574,7 @@ export interface components {
 		};
 		RecruiterMessage: components['schemas']['Message'] & {
 			entry: components['schemas']['MessageEntry'] | null;
-			audio?: components['schemas']['MessageAudio'] | null;
+			audio: components['schemas']['MessageAudio'] | null;
 		};
 		MessageAudio: {
 			duration_ms: number;
@@ -1292,6 +1292,19 @@ export interface operations {
 			/** @description Spoken answer recording in its uploaded format. */
 			200: {
 				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'audio/webm': string;
+					'audio/ogg': string;
+					'audio/mp4': string;
+				};
+			};
+			/** @description A byte range of the spoken answer recording. */
+			206: {
+				headers: {
+					/** @description The byte range returned. */
+					'Content-Range'?: string;
 					[name: string]: unknown;
 				};
 				content: {
