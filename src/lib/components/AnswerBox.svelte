@@ -12,9 +12,11 @@
 		reconnecting: boolean;
 		/** Counts how the answer is entered (FR-15). Paste is never blocked or altered. */
 		entry?: EntryCounter;
+		/** The voice session's text mode: a full-width Send sits below, and the counter always shows. */
+		stacked?: boolean;
 	};
 
-	let { value = $bindable(), locked, reconnecting, entry }: Props = $props();
+	let { value = $bindable(), locked, reconnecting, entry, stacked = false }: Props = $props();
 
 	// Length the field would have after the selection is replaced, read before each input.
 	let keptLength = 0;
@@ -38,7 +40,10 @@
 	const MAX_HEIGHT_RATIO = 0.4;
 
 	let field = $state<HTMLTextAreaElement>();
-	const counter = $derived(answerCounter(value.length));
+	const counter = $derived(
+		answerCounter(value.length) ??
+			(stacked ? { text: `${value.length} / ${MAX_ANSWER}`, atLimit: false } : null)
+	);
 	const sendable = $derived(canSend(value, locked || reconnecting));
 
 	$effect(() => {
@@ -80,28 +85,35 @@
 		onbeforeinput={onBeforeinput}
 		oninput={onInput}
 		disabled={locked}
-		class="col-start-1 row-start-1 w-full resize-none bg-transparent py-1 text-base text-body outline-hidden placeholder:text-helper disabled:text-helper sm:col-span-2"
-	></textarea>
-	<button
-		type="submit"
-		aria-label={reconnecting ? COPY.sendWaiting : COPY.send}
-		disabled={!sendable}
 		class={[
-			'col-start-2 row-start-1 flex h-11 min-w-11 items-center justify-center gap-2 self-end rounded-full outline-hidden transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:row-start-2 sm:px-4',
-			sendable
-				? 'cursor-pointer bg-brand text-card hover:bg-brand/90 active:bg-brand/80'
-				: 'cursor-not-allowed bg-line text-muted'
+			'col-start-1 row-start-1 w-full resize-none bg-transparent py-1 text-base text-body outline-hidden placeholder:text-helper disabled:text-helper',
+			stacked ? 'col-span-2' : 'sm:col-span-2'
+		]}></textarea>
+	{#if !stacked}<button
+			type="submit"
+			aria-label={reconnecting ? COPY.sendWaiting : COPY.send}
+			disabled={!sendable}
+			class={[
+				'col-start-2 row-start-1 flex h-11 min-w-11 items-center justify-center gap-2 self-end rounded-full outline-hidden transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 sm:row-start-2 sm:px-4',
+				sendable
+					? 'cursor-pointer bg-brand text-card hover:bg-brand/90 active:bg-brand/80'
+					: 'cursor-not-allowed bg-line text-muted'
+			]}
+		>
+			<span class="hidden text-body-sm font-medium sm:inline" aria-hidden="true">{COPY.send}</span>
+			<SendHorizontal size={20} aria-hidden="true" />
+		</button>{/if}
+	<div
+		class={[
+			'col-span-2 row-start-2 flex min-h-5 flex-wrap items-center gap-x-3 self-center',
+			stacked ? 'justify-end' : 'justify-between sm:col-span-1 sm:col-start-1'
 		]}
 	>
-		<span class="hidden text-body-sm font-medium sm:inline" aria-hidden="true">{COPY.send}</span>
-		<SendHorizontal size={20} aria-hidden="true" />
-	</button>
-	<div
-		class="col-span-2 row-start-2 flex min-h-5 flex-wrap items-center justify-between gap-x-3 self-center sm:col-span-1 sm:col-start-1"
-	>
-		<span class="hidden text-caption text-muted [@media(hover:hover)_and_(pointer:fine)]:inline">
-			{COPY.hint}
-		</span>
+		{#if !stacked}
+			<span class="hidden text-caption text-muted [@media(hover:hover)_and_(pointer:fine)]:inline">
+				{COPY.hint}
+			</span>
+		{/if}
 		{#if counter}
 			<span
 				id="answer-counter"

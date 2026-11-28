@@ -189,7 +189,11 @@ describe('realApi', () => {
 		await realApi.startSession('t', false);
 		await realApi.startSession('t');
 		const bodies = event.fetch.mock.calls.map(([, init]) => init?.body);
-		expect(bodies).toEqual(['{"recording_consent":true}', '{"recording_consent":false}', undefined]);
+		expect(bodies).toEqual([
+			'{"recording_consent":true}',
+			'{"recording_consent":false}',
+			undefined
+		]);
 		expect(event.fetch.mock.calls[0][0]).toBe('http://api.test/api/v1/sessions/t/start');
 	});
 

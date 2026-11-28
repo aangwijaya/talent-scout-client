@@ -104,7 +104,12 @@ describe('entries', () => {
 		expect(entry.start_latency_ms).toBe(0);
 	});
 
-	it.each(['chose_text', 'declined_recording', 'microphone_unavailable', 'transcription_failed'] as const)(
+	it.each([
+		'chose_text',
+		'declined_recording',
+		'microphone_unavailable',
+		'transcription_failed'
+	] as const)(
 		'a typed answer in a voice session carries mode typed and fallback_reason %s',
 		(reason) => {
 			expect(typedEntry({ pasted_chars: 1, typed_chars: 4, duration_ms: 800 }, reason)).toEqual({

@@ -43,7 +43,11 @@ export type SseTokenResponse = Schemas['SSETokenResponse'];
 export type ApplyResponse = Schemas['ApplyResponse'];
 export type DecisionRequest = Schemas['DecisionRequest'];
 export type ResendInviteResponse = Schemas['ResendInviteResponse'];
+export type SendMessageRequest = Schemas['SendMessageRequest'];
 export type SendMessageResponse = Schemas['SendMessageResponse'];
+export type VoiceSession = Schemas['VoiceSession'];
+export type AudioUploadResponse = Schemas['AudioUploadResponse'];
+export type FallbackReason = NonNullable<MessageEntry['fallback_reason']>;
 export type RetryResponse = Schemas['RetryResponse'];
 export type JobCreateRequest = Schemas['JobCreateRequest'];
 export type JobUpdateRequest = Schemas['JobUpdateRequest'];
@@ -129,9 +133,13 @@ export interface TalentScoutApi {
 	resendInvite(applicationId: string): Promise<ResendInviteResponse>;
 
 	getSession(token: string): Promise<SessionInfo>;
-	startSession(token: string): Promise<SessionInfo>;
+	/** `recordingConsent` is sent only when given: a voice session requires it, a text one ignores it. */
+	startSession(token: string, recordingConsent?: boolean): Promise<SessionInfo>;
 	listMessages(token: string): Promise<MessageList>;
-	sendMessage(token: string, content: string, entry?: MessageEntry): Promise<SendMessageResponse>;
+	/** A typed answer (`content`) or a spoken one (`audio_id`, never the transcript). */
+	sendMessage(token: string, body: SendMessageRequest): Promise<SendMessageResponse>;
+	/** `form` carries the multipart field `audio` (≤ 1 MB). */
+	uploadAudio(token: string, form: FormData): Promise<AudioUploadResponse>;
 	retrySession(token: string): Promise<RetryResponse>;
 
 	getGraphRun(runId: string): Promise<GraphRun>;

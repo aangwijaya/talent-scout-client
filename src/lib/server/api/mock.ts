@@ -4,13 +4,20 @@ import {
 	MOCK_APPLICATION_IDS,
 	MOCK_PASSWORD,
 	MOCK_TOKENS,
+	MOCK_TRANSCRIPT,
 	applications,
 	graphRunSnapshot,
 	jobs,
 	publicJobs,
 	suggestedRubric
 } from './fixtures';
-import { ApiError, type ApplicationDetail, type SessionInfo, type TalentScoutApi } from './types';
+import {
+	ApiError,
+	type ApplicationDetail,
+	type SessionInfo,
+	type TalentScoutApi,
+	type VoiceSession
+} from './types';
 
 const MINUTE_MS = 60_000;
 const MAX_MINUTES = 15;
@@ -27,6 +34,25 @@ function findApplication(id: string): ApplicationDetail {
 	const found = applications.find((detail) => detail.application.id === id);
 	if (!found) throw notFound();
 	return found;
+}
+
+const VOICE_TOKENS: readonly string[] = [MOCK_TOKENS.voiceInvited, MOCK_TOKENS.voiceActive];
+const ACTIVE_TOKENS: readonly string[] = [MOCK_TOKENS.active, MOCK_TOKENS.voiceActive];
+
+function voiceFor(token: string, recordingConsent: boolean | null): VoiceSession | null {
+	if (!VOICE_TOKENS.includes(token)) return null;
+	return {
+		max_answer_seconds: 120,
+		max_total_seconds: 1200,
+		used_seconds: 0,
+		recording_consent: recordingConsent
+	};
+}
+
+function sessionFor(token: string): SessionInfo {
+	const active = ACTIVE_TOKENS.includes(token);
+	const base = active ? activeSession() : sessionBase();
+	return { ...base, voice: voiceFor(token, active ? true : null) };
 }
 
 function activeSession(): SessionInfo {
@@ -67,7 +93,11 @@ function requireLiveToken(token: string): void {
 	if (token === MOCK_TOKENS.completed) {
 		throw new ApiError(410, 'session_completed', 'This session has already finished');
 	}
-	if (token !== MOCK_TOKENS.invited && token !== MOCK_TOKENS.active) {
+	if (
+		token !== MOCK_TOKENS.invited &&
+		token !== MOCK_TOKENS.active &&
+		!VOICE_TOKENS.includes(token)
+	) {
 		throw new ApiError(404, 'session_not_found', 'Session not found');
 	}
 }
@@ -163,20 +193,24 @@ export const mockApi: TalentScoutApi = {
 
 	getSession: async (token) => {
 		requireLiveToken(token);
-		return token === MOCK_TOKENS.active ? activeSession() : sessionBase();
+		return sessionFor(token);
 	},
-	startSession: async (token) => {
+	startSession: async (token, recordingConsent) => {
 		requireLiveToken(token);
-		if (token === MOCK_TOKENS.active) {
+		if (ACTIVE_TOKENS.includes(token)) {
 			throw new ApiError(409, 'session_already_started', 'This session has already started');
 		}
-		return activeSession();
+		const voice = voiceFor(token, recordingConsent ?? null);
+		if (voice && recordingConsent === undefined) {
+			throw new ApiError(400, 'validation_failed', 'recording_consent is required');
+		}
+		return { ...activeSession(), voice };
 	},
 	listMessages: async (token) => {
 		requireLiveToken(token);
-		return { items: token === MOCK_TOKENS.active ? mockMessages.slice(0, 1) : [] };
+		return { items: ACTIVE_TOKENS.includes(token) ? mockMessages.slice(0, 1) : [] };
 	},
-	sendMessage: async (token, content) => {
+	sendMessage: async (token, body) => {
 		requireLiveToken(token);
 		return {
 			message: {
@@ -184,10 +218,26 @@ export const mockApi: TalentScoutApi = {
 				role: 'applicant',
 				kind: 'answer',
 				topic_id: mockMessages[0].topic_id,
-				content,
+				content: 'content' in body ? body.content : MOCK_TRANSCRIPT,
 				created_at: new Date().toISOString()
 			},
 			awaiting: 'assistant'
+		};
+	},
+	uploadAudio: async (token, form) => {
+		requireLiveToken(token);
+		if (!VOICE_TOKENS.includes(token)) {
+			throw new ApiError(409, 'invalid_state', 'This is not a voice session');
+		}
+		const audio = form.get('audio');
+		const bytes = audio instanceof Blob ? audio.size : 0;
+		return {
+			audio_id: crypto.randomUUID(),
+			transcript: MOCK_TRANSCRIPT,
+			language: 'en',
+			// About what a 32 kbit/s recording of this size lasts.
+			duration_ms: Math.max(1000, Math.round(bytes / 4)),
+			stored: true
 		};
 	},
 	retrySession: async (token) => {

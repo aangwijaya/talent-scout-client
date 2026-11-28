@@ -1,4 +1,3 @@
-import type { RequestEvent } from '@sveltejs/kit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '$lib/server/api/types';
 
@@ -18,9 +17,7 @@ function upload(file: File | null, headers: Record<string, string> = {}) {
 		body,
 		headers
 	});
-	return POST({ params: { token: TOKEN }, request } as unknown as RequestEvent<{
-		token: string;
-	}>);
+	return POST({ params: { token: TOKEN }, request } as unknown as Parameters<typeof POST>[0]);
 }
 
 const recording = (bytes: number, type = 'audio/webm;codecs=opus') =>

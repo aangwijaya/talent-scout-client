@@ -98,10 +98,15 @@ export const realApi: TalentScoutApi = {
 	resendInvite: (id) => postJson(`/applications/${seg(id)}/resend-invite`),
 
 	getSession: (token) => getJson(`/sessions/${seg(token)}`),
-	startSession: (token) => postJson(`/sessions/${seg(token)}/start`),
+	startSession: (token, recordingConsent) =>
+		postJson(
+			`/sessions/${seg(token)}/start`,
+			recordingConsent === undefined ? undefined : { recording_consent: recordingConsent }
+		),
 	listMessages: (token) => getJson(`/sessions/${seg(token)}/messages`),
-	sendMessage: (token, content, entry) =>
-		postJson(`/sessions/${seg(token)}/messages`, entry ? { content, entry } : { content }),
+	sendMessage: (token, body) => postJson(`/sessions/${seg(token)}/messages`, body),
+	uploadAudio: async (token, form) =>
+		(await send(`/sessions/${seg(token)}/audio`, { method: 'POST', body: form })).json(),
 	retrySession: (token) => postJson(`/sessions/${seg(token)}/retry`),
 
 	getGraphRun: (runId) => getJson(`/graph-runs/${seg(runId)}`),
