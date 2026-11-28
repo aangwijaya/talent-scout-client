@@ -146,6 +146,8 @@
 		rec = next;
 		if (next.kind !== 'error') return;
 		const { failure } = next;
+		// The server's count wins: voice stays off for the rest of the session.
+		if (failure.kind === 'budget') usedSeconds = voice.max_total_seconds;
 		if (failure.next === 'reload') onended();
 		else if (failure.next === 'text') toText(failure.fallback ?? 'chose_text', failure);
 	}
