@@ -352,6 +352,21 @@ function authenticityRoute(method: string, path: string): Handler | null {
 			return json(res, 202, { message, awaiting: 'assistant' });
 		};
 	}
+	// A spoken answer (FR-16): any recording "transcribes" to the same fake text.
+	if (method === 'POST' && path === `${session}/audio`) {
+		return (req, res) => {
+			req.resume();
+			req.on('end', () =>
+				json(res, 200, {
+					audio_id: crypto.randomUUID(),
+					transcript: 'A fake transcript of the recorded answer.',
+					language: 'en',
+					duration_ms: 3000,
+					stored: true
+				})
+			);
+		};
+	}
 	// The browser opens this stream itself (cross-origin); it stays open and quiet.
 	if (method === 'GET' && (path === `${session}/events` || path === `${invited}/events`)) {
 		return (_, res) => {

@@ -43,8 +43,15 @@ export const MOCK_TOKENS = {
 	invited: 'mock-invited',
 	active: 'mock-active',
 	expired: 'mock-expired',
-	completed: 'mock-completed'
+	completed: 'mock-completed',
+	/** A voice interview (FR-16): `voice` is set, consent not given yet. */
+	voiceInvited: 'mock-voice-invited',
+	voiceActive: 'mock-voice-active'
 } as const;
+
+/** What the mock "heard" in every recording; stateless, so every upload gets the same text. */
+export const MOCK_TRANSCRIPT =
+	'I led the move of our checkout to Svelte, and I kept the old flow running until the new one matched it.';
 
 export const MOCK_APPLICATION_IDS = {
 	review: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',

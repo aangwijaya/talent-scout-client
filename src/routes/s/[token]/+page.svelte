@@ -2,6 +2,10 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { enhance, type SubmitFunction } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import Mic from '@lucide/svelte/icons/mic';
+	import VoiceTurn from '$lib/components/VoiceTurn.svelte';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Clock from '@lucide/svelte/icons/clock';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
@@ -37,6 +41,16 @@
 			'If you refresh or lose your connection, open this link again to continue.'
 		],
 		entryNotice: 'We note whether answers were typed or pasted. A person reviews this.',
+		voiceBody: (seconds: number) => {
+			const minutes = Math.max(1, Math.round(seconds / 60));
+			const limit = `${minutes} minute${minutes === 1 ? '' : 's'}`;
+			return `This interview is spoken, in English. Questions are read aloud, and you answer by speaking, up to ${limit} per answer.`;
+		},
+		// FR-16 consent copy, word for word.
+		voiceConsent:
+			'Your spoken answers are recorded and transcribed by a third-party service (Groq). The recordings are kept for 30 days so the recruiter can listen, then deleted. You can answer in text instead.',
+		startVoice: 'Start with voice',
+		startText: 'Answer in text instead',
 		start: 'Start screening',
 		connecting: 'Connecting…',
 		topic: (position: number, total: number) => `Topic ${position} of ${total}`,
@@ -94,6 +108,17 @@
 	});
 
 	const apply = (event: SessionEvent) => (chat = reduceChat(chat, event));
+
+	// svelte-ignore state_referenced_locally
+	let voice = $state(data.session.voice);
+	const uploadUrl = $derived(resolve('/s/[token]/audio', { token: page.params.token ?? '' }));
+	const question = $derived.by(() => {
+		if (chat.streaming) {
+			return { id: chat.streaming.message_id, text: chat.streaming.text, complete: false };
+		}
+		const last = chat.messages.findLast((m) => m.role === 'assistant');
+		return last ? { id: last.id, text: last.content, complete: true } : null;
+	});
 
 	function replayTurn(index: number) {
 		const turn = mockTurns[index];
@@ -157,6 +182,7 @@
 			submitting = false;
 			if (result.type === 'success' && result.data?.session) {
 				const session = result.data.session as SessionInfo;
+				voice = session.voice;
 				chat = {
 					...chat,
 					status: session.status,
@@ -175,11 +201,17 @@
 	};
 
 	const messageSubmit: SubmitFunction = ({ cancel, formData }) => {
-		if (!canSend(chat.draft, inputLocked || reconnecting)) return cancel();
+		const spoken = formData.has('audio_id');
+		if (spoken ? inputLocked || reconnecting : !canSend(chat.draft, inputLocked || reconnecting)) {
+			return cancel();
+		}
 		submitting = true;
 		formError = null;
-		// An automatic resend keeps the entry measured at the applicant's own Send.
-		const sent = heldEntry ?? entry.snapshot();
+		// An automatic resend keeps the entry measured at the applicant's own Send. In a voice
+		// session the answer's form has already set it.
+		const own = formData.get('entry');
+		const sent: MessageEntry | null =
+			heldEntry ?? (typeof own === 'string' ? JSON.parse(own) : entry.snapshot());
 		heldEntry = null;
 		if (sent) formData.set('entry', JSON.stringify(sent));
 		return async ({ result }) => {
@@ -291,25 +323,67 @@
 					<p class="text-body-sm text-muted">Hi {data.session.applicant_name},</p>
 					<h2 class="mt-1 text-heading-sm font-semibold text-ink">{COPY.introHeading}</h2>
 				</div>
-				<ul class="flex list-disc flex-col gap-2 pl-5 text-muted">
-					{#each COPY.rules as rule (rule)}
-						<li>{rule.replace('{minutes}', String(data.session.max_minutes))}</li>
-					{/each}
-					<li class="font-medium text-ink">{COPY.entryNotice}</li>
-				</ul>
-				{#if formError}<InlineError message={formError} />{/if}
-				<form method="POST" action="?/start" use:enhance={startSubmit}>
-					<Button
-						type="submit"
-						variant="primary"
-						size="lg"
-						class="w-full sm:w-auto"
-						disabled={!streamReady || submitting}
-						loading={submitting}
+				{#if voice}
+					<p class="text-muted">{COPY.voiceBody(voice.max_answer_seconds)}</p>
+					<p
+						class="flex items-start gap-2 rounded-card border border-line p-3 text-caption text-muted"
 					>
-						{streamReady ? COPY.start : COPY.connecting}
-					</Button>
-				</form>
+						<Mic size={16} aria-hidden="true" class="mt-0.5 shrink-0" />
+						{COPY.voiceConsent}
+					</p>
+				{:else}
+					<ul class="flex list-disc flex-col gap-2 pl-5 text-muted">
+						{#each COPY.rules as rule (rule)}
+							<li>{rule.replace('{minutes}', String(data.session.max_minutes))}</li>
+						{/each}
+						<li class="font-medium text-ink">{COPY.entryNotice}</li>
+					</ul>
+				{/if}
+				{#if formError}<InlineError message={formError} />{/if}
+				{#if voice}
+					<form
+						method="POST"
+						action="?/start"
+						use:enhance={startSubmit}
+						class="flex flex-col gap-2"
+					>
+						<Button
+							type="submit"
+							name="recording_consent"
+							value="true"
+							variant="primary"
+							size="lg"
+							class="w-full whitespace-nowrap"
+							disabled={!streamReady || submitting}
+						>
+							{streamReady ? COPY.startVoice : COPY.connecting}
+						</Button>
+						<Button
+							type="submit"
+							name="recording_consent"
+							value="false"
+							variant="secondary"
+							size="lg"
+							class="w-full whitespace-nowrap"
+							disabled={!streamReady || submitting}
+						>
+							{COPY.startText}
+						</Button>
+					</form>
+				{:else}
+					<form method="POST" action="?/start" use:enhance={startSubmit}>
+						<Button
+							type="submit"
+							variant="primary"
+							size="lg"
+							class="w-full sm:w-auto"
+							disabled={!streamReady || submitting}
+							loading={submitting}
+						>
+							{streamReady ? COPY.start : COPY.connecting}
+						</Button>
+					</form>
+				{/if}
 			</Card>
 		</div>
 	{:else}
@@ -321,52 +395,85 @@
 				</p>
 			</div>
 		{/if}
-		<section
-			bind:this={list}
-			onscroll={onLogScroll}
-			role="log"
-			aria-live="polite"
-			aria-label="Conversation"
-			class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6"
-		>
-			<div class="mx-auto flex min-h-full max-w-[720px] flex-col justify-end gap-3">
-				{#each chat.messages as message (message.id)}
-					{#if message.role !== 'system'}
-						<MessageBubble role={message.role} content={message.content} />
+		{#if voice}
+			{#if chat.error?.retryable || chat.error || formError}
+				<div class="mx-auto flex w-full max-w-[640px] flex-col gap-2 px-4 pt-3">
+					{#if chat.error?.retryable}
+						<InlineError message={COPY.retryError} onretry={() => retryForm?.requestSubmit()} />
+					{:else if chat.error}
+						<InlineError message={COPY.fatalError} />
 					{/if}
-				{/each}
-				{#if chat.streaming}
-					<MessageBubble role="assistant" content={chat.streaming.text} streaming />
-				{:else if typing}
-					<TypingIndicator first={typing === 'first'} />
-				{/if}
-			</div>
-		</section>
+					{#if formError}<InlineError message={formError} />{/if}
+				</div>
+			{/if}
+			<form
+				bind:this={retryForm}
+				method="POST"
+				action="?/retry"
+				use:enhance={retrySubmit}
+				hidden
+			></form>
+			<VoiceTurn
+				{voice}
+				{question}
+				locked={inputLocked}
+				{reconnecting}
+				{typing}
+				bind:draft={chat.draft}
+				{entry}
+				{uploadUrl}
+				submit={messageSubmit}
+				bind:form={answerForm}
+				onended={() => invalidateAll()}
+			/>
+		{:else}
+			<section
+				bind:this={list}
+				onscroll={onLogScroll}
+				role="log"
+				aria-live="polite"
+				aria-label="Conversation"
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6"
+			>
+				<div class="mx-auto flex min-h-full max-w-[720px] flex-col justify-end gap-3">
+					{#each chat.messages as message (message.id)}
+						{#if message.role !== 'system'}
+							<MessageBubble role={message.role} content={message.content} />
+						{/if}
+					{/each}
+					{#if chat.streaming}
+						<MessageBubble role="assistant" content={chat.streaming.text} streaming />
+					{:else if typing}
+						<TypingIndicator first={typing === 'first'} />
+					{/if}
+				</div>
+			</section>
 
-		<div
-			class="border-t border-line bg-card px-1.5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
-		>
-			<div class="mx-auto flex max-w-[720px] flex-col gap-2">
-				{#if chat.error?.retryable}
-					<InlineError message={COPY.retryError} onretry={() => retryForm?.requestSubmit()} />
-				{:else if chat.error}
-					<InlineError message={COPY.fatalError} />
-				{/if}
-				{#if formError}<InlineError message={formError} />{/if}
-				<form
-					bind:this={retryForm}
-					method="POST"
-					action="?/retry"
-					use:enhance={retrySubmit}
-					hidden
-				></form>
-				<p class="text-caption text-helper empty:hidden" aria-live="polite">
-					{#if timeUp}{COPY.timeUp}{/if}
-				</p>
-				<form bind:this={answerForm} method="POST" action="?/message" use:enhance={messageSubmit}>
-					<AnswerBox bind:value={chat.draft} locked={inputLocked} {reconnecting} {entry} />
-				</form>
+			<div
+				class="border-t border-line bg-card px-1.5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
+			>
+				<div class="mx-auto flex max-w-[720px] flex-col gap-2">
+					{#if chat.error?.retryable}
+						<InlineError message={COPY.retryError} onretry={() => retryForm?.requestSubmit()} />
+					{:else if chat.error}
+						<InlineError message={COPY.fatalError} />
+					{/if}
+					{#if formError}<InlineError message={formError} />{/if}
+					<form
+						bind:this={retryForm}
+						method="POST"
+						action="?/retry"
+						use:enhance={retrySubmit}
+						hidden
+					></form>
+					<p class="text-caption text-helper empty:hidden" aria-live="polite">
+						{#if timeUp}{COPY.timeUp}{/if}
+					</p>
+					<form bind:this={answerForm} method="POST" action="?/message" use:enhance={messageSubmit}>
+						<AnswerBox bind:value={chat.draft} locked={inputLocked} {reconnecting} {entry} />
+					</form>
+				</div>
 			</div>
-		</div>
+		{/if}
 	{/if}
 </main>
