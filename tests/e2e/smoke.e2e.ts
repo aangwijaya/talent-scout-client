@@ -319,3 +319,142 @@ test.describe('job description', () => {
 		await expect(applyLink(page)).toHaveCount(0);
 	});
 });
+
+test.describe('voice interview (mock)', () => {
+	const VOICE_TOKEN = 'mock-voice-invited';
+	// From MOCK_TRANSCRIPT in src/lib/server/api/fixtures.
+	const TRANSCRIPT = 'I led the move of our checkout to Svelte';
+
+	/** A fake microphone and `MediaRecorder`: Playwright's Chromium has no real audio input. */
+	async function fakeMicrophone(page: Page, allow = true): Promise<void> {
+		await page.addInitScript((allowed) => {
+			const getUserMedia = async () => {
+				if (!allowed) throw new DOMException('denied', 'NotAllowedError');
+				return { getTracks: () => [{ stop() {} }] };
+			};
+			Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia } });
+			class FakeRecorder {
+				static isTypeSupported = (type: string) => type === 'audio/webm;codecs=opus';
+				state = 'inactive';
+				mimeType: string;
+				ondataavailable: ((e: { data: Blob }) => void) | null = null;
+				onstop: (() => void) | null = null;
+				constructor(_: unknown, options: { mimeType?: string }) {
+					this.mimeType = options.mimeType ?? '';
+				}
+				start() {
+					this.state = 'recording';
+				}
+				stop() {
+					this.state = 'inactive';
+					setTimeout(() => {
+						this.ondataavailable?.({ data: new Blob([new Uint8Array(4000)]) });
+						this.onstop?.();
+					});
+				}
+			}
+			Object.defineProperty(window, 'MediaRecorder', { value: FakeRecorder });
+		}, allow);
+	}
+
+	async function startVoice(page: Page, choice: 'Start with voice' | 'Answer in text instead') {
+		await page.goto(`/s/${VOICE_TOKEN}`);
+		await expect(page.getByText('third-party service (Groq)')).toBeVisible();
+		await page.getByRole('button', { name: choice }).click();
+	}
+
+	/** Clicks Send answer and returns the posted `?/message` fields (Kit sends them urlencoded). */
+	async function sendAnswer(page: Page): Promise<URLSearchParams> {
+		const sent = page.waitForRequest((r) => r.url().endsWith('?/message'));
+		await page.getByRole('button', { name: 'Send answer' }).click();
+		return new URLSearchParams((await sent).postData() ?? '');
+	}
+	const entryOf = (form: URLSearchParams) => JSON.parse(form.get('entry') ?? 'null');
+
+	test('consent, record, review, re-record, then send the spoken answer', async ({ page }) => {
+		await fakeMicrophone(page);
+		await startVoice(page, 'Start with voice');
+		const record = page.getByRole('button', { name: 'Start recording your answer' });
+		await expect(record).toBeEnabled();
+		expect((await record.boundingBox())?.width).toBeGreaterThanOrEqual(44);
+		await expect(page.getByText('Recording time left: 20:00 of 20:00')).toBeVisible();
+
+		await record.click();
+		const stop = page.getByRole('button', { name: 'Stop recording' });
+		await expect(stop).toBeVisible();
+		await expect(page.getByText('Stops by itself at 2:00.')).toBeVisible();
+		// Keyboard only from here: Enter on the focused button stops the recording.
+		await stop.focus();
+		await page.keyboard.press('Enter');
+		await expect(page.getByText("What we heard (you can't edit it)")).toBeVisible();
+		await expect(page.getByTestId('transcript')).toContainText(TRANSCRIPT);
+
+		await page.getByRole('button', { name: 'Re-record' }).click();
+		await page.getByRole('button', { name: 'Stop recording' }).click();
+		await expect(page.getByTestId('transcript')).toContainText(TRANSCRIPT);
+
+		const form = await sendAnswer(page);
+		expect(form.get('audio_id')).toMatch(/^[0-9a-f-]{36}$/);
+		expect(form.has('content')).toBe(false);
+		expect(form.toString()).not.toContain('checkout');
+		expect(entryOf(form)).toMatchObject({
+			mode: 'spoken',
+			rerecord_count: 1,
+			start_latency_ms: expect.any(Number),
+			speaking_ms: expect.any(Number)
+		});
+	});
+
+	test('type instead sends a typed answer marked chose_text, and voice stays on offer', async ({
+		page
+	}) => {
+		await fakeMicrophone(page);
+		await startVoice(page, 'Start with voice');
+		await expect(page.getByRole('button', { name: 'Start recording your answer' })).toBeEnabled();
+		await page.getByRole('button', { name: 'Type instead' }).click();
+		await expect(
+			page.getByText('Answering in text. The recruiter sees that this answer was typed.')
+		).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Answer by voice' })).toBeVisible();
+		await page.getByLabel('Your answer').fill('A typed answer.');
+		const form = await sendAnswer(page);
+		expect(form.get('content')).toBe('A typed answer.');
+		expect(entryOf(form)).toMatchObject({ mode: 'typed', fallback_reason: 'chose_text' });
+	});
+
+	test('declining recording types every answer, with no way back to voice', async ({ page }) => {
+		await fakeMicrophone(page);
+		await startVoice(page, 'Answer in text instead');
+		await expect(page.getByLabel('Your answer')).toBeEnabled();
+		await expect(page.getByRole('button', { name: 'Answer by voice' })).toHaveCount(0);
+		await page.getByLabel('Your answer').fill('Typed.');
+		const form = await sendAnswer(page);
+		expect(entryOf(form)).toMatchObject({ mode: 'typed', fallback_reason: 'declined_recording' });
+	});
+
+	test('a blocked microphone switches to text', async ({ page }) => {
+		await fakeMicrophone(page, false);
+		await startVoice(page, 'Start with voice');
+		await page.getByRole('button', { name: 'Start recording your answer' }).click();
+		await expect(page.getByText('Your browser blocked the microphone')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Answer by voice' })).toHaveCount(0);
+	});
+
+	test('at 320 px no button wraps to two lines', async ({ page }) => {
+		await page.setViewportSize({ width: 320, height: 640 });
+		await fakeMicrophone(page);
+		await page.goto(`/s/${VOICE_TOKEN}`);
+		const oneLine = async (name: string) => {
+			const box = await page.getByRole('button', { name }).boundingBox();
+			expect(box?.height, name).toBeLessThanOrEqual(48);
+		};
+		await oneLine('Start with voice');
+		await oneLine('Answer in text instead');
+		await page.getByRole('button', { name: 'Start with voice' }).click();
+		await page.getByRole('button', { name: 'Start recording your answer' }).click();
+		await page.getByRole('button', { name: 'Stop recording' }).click();
+		await oneLine('Send answer');
+		await oneLine('Re-record');
+		await expectNoHorizontalScroll(page);
+	});
+});
