@@ -175,7 +175,8 @@ function reviewedApplication(id: string, assessed: boolean) {
 		topic_id: TOPIC_ID,
 		content,
 		created_at: `2026-11-05T14:0${n}:00Z`,
-		entry
+		entry,
+		audio: null
 	});
 	return {
 		application: {
@@ -205,7 +206,7 @@ function reviewedApplication(id: string, assessed: boolean) {
 			}
 		],
 		messages: [
-			{ ...question, entry: null },
+			{ ...question, entry: null, audio: null },
 			answer(1, 'I rebuilt the checkout flow and measured the drop-off.', {
 				pasted_chars: 412,
 				typed_chars: 3,

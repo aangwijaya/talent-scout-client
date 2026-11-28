@@ -150,7 +150,8 @@ test('apply, screen, review, shortlist and watch the run against the real API', 
 		await expect(recruiter.getByText('Graph run not found')).toHaveCount(0);
 		try {
 			const graph = recruiter.getByRole('region', { name: /Graph of the run/ });
-			await expect(graph.locator('.svelte-flow__node')).toHaveCount(9);
+			// The pinned server's graph has 10 nodes since fluency (S-V5); it is skipped in a text session.
+			await expect(graph.locator('.svelte-flow__node')).toHaveCount(10);
 			const events = recruiter.locator('section[aria-labelledby="events-title"]');
 			await expect(events.getByText('run.completed', { exact: true })).toBeVisible({
 				timeout: 30_000
